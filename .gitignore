@@ -39,3 +39,22 @@ next-env.d.ts
 # Docker
 postgres_data/
 .env*.local
+
+# Secrets and environment (ensure real env/keys are never committed)
+.env.local
+.env.development.local
+.env.test
+.env.production
+.env.*.local
+.env.*
+.envrc
+
+# Key/certificate files
+*.key
+*.pem
+*.p12
+
+# Generic secrets folders
+secrets/
+credentials/
+*.secret
