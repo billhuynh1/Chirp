@@ -43,7 +43,7 @@ export default async function InboxPage({
         </p>
       </div>
 
-      <Card className="border-black/10 bg-white/85 dark:border-white/10 dark:bg-[#111b1d]/90">
+      <Card className="bg-white/85 dark:bg-[#111b1d]/90">
         <CardHeader>
           <CardTitle>Filters</CardTitle>
         </CardHeader>
@@ -83,7 +83,7 @@ export default async function InboxPage({
         </CardContent>
       </Card>
 
-      <Card className="border-black/10 bg-white/85 dark:border-white/10 dark:bg-[#111b1d]/90">
+      <Card className="bg-white/85 dark:bg-[#111b1d]/90">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Reviews</CardTitle>
           <Badge variant="neutral">{reviews.length} total</Badge>

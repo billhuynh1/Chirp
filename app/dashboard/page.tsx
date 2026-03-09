@@ -78,7 +78,7 @@ export default async function DashboardPage() {
         ].map((item) => (
           <Card
             key={item.label}
-            className="border-black/10 bg-white/85 dark:border-white/10 dark:bg-[#111b1d]/90"
+            className="bg-white/85 dark:bg-[#111b1d]/90"
           >
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
-        <Card className="border-black/10 bg-white/85 dark:border-white/10 dark:bg-[#111b1d]/90">
+        <Card className="bg-white/85 dark:bg-[#111b1d]/90">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Urgent reviews</CardTitle>
             <Button asChild variant="outline" size="sm" className="rounded-full">
@@ -134,7 +134,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-black/10 bg-white/85 dark:border-white/10 dark:bg-[#111b1d]/90">
+        <Card className="bg-white/85 dark:bg-[#111b1d]/90">
           <CardHeader>
             <CardTitle>MVP analytics</CardTitle>
           </CardHeader>

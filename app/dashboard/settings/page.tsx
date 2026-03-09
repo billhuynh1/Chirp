@@ -28,7 +28,7 @@ export default async function SettingsPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <Card className="border-black/10 bg-white/85 dark:border-white/10 dark:bg-[#111b1d]/90">
+        <Card className="bg-white/85 dark:bg-[#111b1d]/90">
           <CardHeader>
             <CardTitle>Business profile</CardTitle>
           </CardHeader>
@@ -65,7 +65,7 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-black/10 bg-white/85 dark:border-white/10 dark:bg-[#111b1d]/90">
+        <Card className="bg-white/85 dark:bg-[#111b1d]/90">
           <CardHeader>
             <CardTitle>Draft rules</CardTitle>
           </CardHeader>

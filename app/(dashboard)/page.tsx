@@ -191,7 +191,7 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <Card className="rounded-[2rem] border-black/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(246,241,232,0.88))] shadow-none dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(21,27,36,0.95),rgba(11,16,24,0.96))]">
+          <Card className="rounded-[2rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(246,241,232,0.88))] shadow-none dark:bg-[linear-gradient(145deg,rgba(21,27,36,0.95),rgba(11,16,24,0.96))]">
             <CardHeader className="space-y-4">
               <Badge className="w-fit rounded-full border-[#c85c36]/15 bg-[#f5e5de] text-[#8c4127] dark:border-[#f0b7a0]/20 dark:bg-[#f0b7a0]/10 dark:text-[#f7c8b6]">
                 Review inbox
@@ -244,7 +244,7 @@ export default function HomePage() {
           </Card>
 
           <div className="grid gap-6">
-            <Card className="rounded-[2rem] border-black/10 bg-white/80 shadow-none dark:border-white/10 dark:bg-white/5">
+            <Card className="rounded-[2rem] bg-white/80 shadow-none dark:bg-white/5">
               <CardHeader>
                 <div className="flex size-12 items-center justify-center rounded-2xl border border-black/10 bg-[#f7f2ea] text-[#8c4127] dark:border-white/10 dark:bg-white/5 dark:text-[#f7c8b6]">
                   <Sparkles className="size-5" />
@@ -258,7 +258,7 @@ export default function HomePage() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-[2rem] border-black/10 bg-white/80 shadow-none dark:border-white/10 dark:bg-white/5">
+            <Card className="rounded-[2rem] bg-white/80 shadow-none dark:bg-white/5">
               <CardHeader>
                 <div className="flex size-12 items-center justify-center rounded-2xl border border-black/10 bg-[#f7f2ea] text-[#8c4127] dark:border-white/10 dark:bg-white/5 dark:text-[#f7c8b6]">
                   <BellRing className="size-5" />
@@ -276,7 +276,7 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-8">
-        <Card className="overflow-hidden rounded-[2.25rem] border-black/10 bg-[#1f2a2a] text-white shadow-none dark:border-white/10 dark:bg-[linear-gradient(145deg,#111821_0%,#172126_100%)]">
+        <Card className="overflow-hidden rounded-[2.25rem] bg-[#1f2a2a] text-white shadow-none dark:bg-[linear-gradient(145deg,#111821_0%,#172126_100%)]">
           <CardContent className="grid gap-8 px-8 py-10 lg:grid-cols-[1fr_auto] lg:items-center lg:px-12 lg:py-12">
             <div>
               <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#efb49f]">

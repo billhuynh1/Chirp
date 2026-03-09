@@ -76,7 +76,7 @@ export default async function ActivityPage() {
       <h1 className="mb-6 text-lg font-medium text-gray-900 dark:text-white lg:text-2xl">
         Activity Log
       </h1>
-      <Card className="dark:border-white/10 dark:bg-[#111b1d]/90">
+      <Card className="dark:bg-[#111b1d]/90">
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>

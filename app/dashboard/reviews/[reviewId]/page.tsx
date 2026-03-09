@@ -48,7 +48,7 @@ export default async function ReviewDetailPage({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
-        <Card className="border-black/10 bg-white/85 dark:border-white/10 dark:bg-[#111b1d]/90">
+        <Card className="bg-white/85 dark:bg-[#111b1d]/90">
           <CardHeader>
             <CardTitle>Analysis</CardTitle>
           </CardHeader>
@@ -86,7 +86,7 @@ export default async function ReviewDetailPage({
           </CardContent>
         </Card>
 
-        <Card className="border-black/10 bg-white/85 dark:border-white/10 dark:bg-[#111b1d]/90">
+        <Card className="bg-white/85 dark:bg-[#111b1d]/90">
           <CardHeader>
             <CardTitle>Draft reply</CardTitle>
           </CardHeader>

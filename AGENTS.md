@@ -394,6 +394,15 @@ Do not leak internal-only fields to the frontend unnecessarily.
 Do not write trivial tests for the sake of coverage.
 Test business-critical paths and failure modes.
 
+### Verification Gates (Required)
+- For any UI change, always run `npm run build`.
+- For any UI change, perform a browser runtime smoke check on the changed page(s):
+- open the page
+- click through changed interactions
+- confirm there is no red runtime error overlay
+- confirm browser console has no uncaught errors from the changed flow
+- If browser runtime verification is not possible in-session, explicitly report that limitation and do not claim runtime verification was completed.
+
 ---
 
 ## Performance and Reliability Expectations

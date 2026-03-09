@@ -7,6 +7,8 @@ import { getCurrentWorkspace } from '@/lib/db/queries';
 import { createAuditLog } from '@/lib/services/audit';
 import {
   completeBusinessOnboarding,
+  getOnboardingStatus,
+  normalizeServiceValue,
   updateBusinessProfile,
   updateBusinessSettings
 } from '@/lib/services/businesses';
@@ -45,7 +47,7 @@ async function requireWorkspace() {
 
 const businessProfileSchema = z.object({
   name: z.string().min(2).max(160),
-  vertical: z.string().min(2).max(80),
+  vertical: z.string().trim().min(1).max(80),
   primaryPhone: z.string().max(40).optional(),
   website: z.string().max(255).optional(),
   timezone: z.string().min(2).max(80),
@@ -55,10 +57,14 @@ const businessProfileSchema = z.object({
 export async function saveBusinessProfileAction(formData: FormData) {
   const workspace = await requireWorkspace();
   const parsed = businessProfileSchema.parse(Object.fromEntries(formData));
+  const normalizedService = normalizeServiceValue(parsed.vertical);
+  if (!normalizedService) {
+    redirect('/dashboard/setup?error=invalid-service');
+  }
 
   await updateBusinessProfile(workspace.business.id, {
     name: parsed.name,
-    vertical: parsed.vertical,
+    vertical: normalizedService,
     primaryPhone: parsed.primaryPhone || null,
     website: parsed.website || null,
     timezone: parsed.timezone,
@@ -72,7 +78,10 @@ export async function saveBusinessProfileAction(formData: FormData) {
     entityType: 'business',
     entityId: workspace.business.id,
     action: 'update_business_profile',
-    metadata: parsed
+    metadata: {
+      ...parsed,
+      vertical: normalizedService
+    }
   });
 
   revalidatePath('/dashboard/setup');
@@ -193,6 +202,11 @@ export async function syncNowAction(formData: FormData) {
 
 export async function completeSetupAction() {
   const workspace = await requireWorkspace();
+  const onboardingStatus = await getOnboardingStatus(workspace.business.id);
+  if (!onboardingStatus.allComplete) {
+    redirect('/dashboard/setup?error=incomplete-onboarding');
+  }
+
   await completeBusinessOnboarding(workspace.business.id);
 
   await createAuditLog({

@@ -1,6 +1,4 @@
 import { and, eq } from 'drizzle-orm';
-import type { LucideIcon } from 'lucide-react';
-import { Building2, Link2, Sparkles } from 'lucide-react';
 import { db } from '@/lib/db/drizzle';
 import {
   businessSettings,
@@ -12,6 +10,24 @@ import {
   type NewBusiness,
   type NewBusinessSettings
 } from '@/lib/db/schema';
+
+const SERVICE_ALIASES = {
+  plumbing: 'plumbing',
+  plumber: 'plumbing'
+} as const;
+
+export const SERVICE_SUGGESTIONS = ['plumbing'];
+
+export const COMING_SOON_SERVICES = ['HVAC', 'Electrical', 'Roofing'] as const;
+
+export function normalizeServiceValue(input: string | null | undefined) {
+  if (!input) {
+    return null;
+  }
+
+  const normalized = input.trim().toLowerCase();
+  return SERVICE_ALIASES[normalized as keyof typeof SERVICE_ALIASES] ?? null;
+}
 
 export async function createDefaultBusiness({
   teamId,
@@ -188,7 +204,7 @@ export type OnboardingStep = {
   id: string;
   title: string;
   description: string;
-  icon: LucideIcon;
+  iconKey: 'building' | 'link' | 'sparkles';
   href: string;
   isComplete: boolean;
 };
@@ -203,7 +219,7 @@ export type OnboardingStatus = {
 export async function getOnboardingStatus(
   businessId: number
 ): Promise<OnboardingStatus> {
-  const [business, settings, googleAccount] = await Promise.all([
+  const [business, settings, googleAccount, activeLocation] = await Promise.all([
     db.query.businesses.findFirst({
       where: eq(businesses.id, businessId)
     }),
@@ -215,15 +231,18 @@ export async function getOnboardingStatus(
         eq(connectedAccounts.businessId, businessId),
         eq(connectedAccounts.provider, 'google_business_profile')
       )
+    }),
+    db.query.locations.findFirst({
+      where: and(eq(locations.businessId, businessId), eq(locations.status, 'active'))
     })
   ]);
 
   const hasBusinessInfo =
     !!business &&
-    business.vertical !== 'plumbing' &&
+    !!normalizeServiceValue(business.vertical) &&
     (!!business.primaryPhone || !!business.website);
 
-  const hasGoogleConnected = !!googleAccount;
+  const hasGoogleConnected = !!googleAccount && !!activeLocation;
 
   const hasConfiguredDrafts =
     !!settings &&
@@ -236,9 +255,9 @@ export async function getOnboardingStatus(
       id: 'business_info',
       title: 'Add business info',
       description:
-        'Set your service niche, phone number, and website so Chirp can tailor replies.',
-      icon: Building2,
-      href: '/dashboard/setup',
+        'Set your service, phone number, and website so Chirp can tailor replies.',
+      iconKey: 'building',
+      href: '/dashboard/setup#business-profile',
       isComplete: hasBusinessInfo
     },
     {
@@ -246,8 +265,8 @@ export async function getOnboardingStatus(
       title: 'Connect Google Business Profile',
       description:
         'Link your Google account to start importing reviews automatically.',
-      icon: Link2,
-      href: '/dashboard/setup',
+      iconKey: 'link',
+      href: '/dashboard/setup#connect-google',
       isComplete: hasGoogleConnected
     },
     {
@@ -255,8 +274,8 @@ export async function getOnboardingStatus(
       title: 'Configure drafting defaults',
       description:
         'Set your brand voice and sign-off name so AI drafts sound like you.',
-      icon: Sparkles,
-      href: '/dashboard/setup',
+      iconKey: 'sparkles',
+      href: '/dashboard/setup#drafting-defaults',
       isComplete: hasConfiguredDrafts
     }
   ];

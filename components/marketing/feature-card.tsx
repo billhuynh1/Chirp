@@ -13,7 +13,7 @@ export function FeatureCard({
   description
 }: FeatureCardProps) {
   return (
-    <Card className="h-full rounded-[1.75rem] border-black/10 bg-white/80 shadow-none dark:border-white/10 dark:bg-white/5">
+    <Card className="h-full rounded-[1.75rem] bg-white/80 shadow-none dark:bg-white/5">
       <CardHeader className="space-y-4">
         <div className="flex size-12 items-center justify-center rounded-2xl border border-[#c85c36]/15 bg-[#f5e5de] text-[#8c4127] dark:border-[#f0b7a0]/20 dark:bg-[#f0b7a0]/10 dark:text-[#f7c8b6]">
           <Icon className="size-5" />

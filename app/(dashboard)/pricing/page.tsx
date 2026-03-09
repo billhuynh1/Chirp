@@ -36,7 +36,7 @@ export default function PricingPage() {
         {plans.map((plan) => (
           <Card
             key={plan.name}
-            className="border-black/10 bg-white/90 dark:border-white/10 dark:bg-[#111b1d]/90"
+            className="bg-white/90 dark:bg-[#111b1d]/90"
           >
             <CardHeader>
               <CardTitle className="text-2xl">{plan.name}</CardTitle>

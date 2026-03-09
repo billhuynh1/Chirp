@@ -6,9 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { getCurrentWorkspace } from '@/lib/db/queries';
-import { getOnboardingStatus } from '@/lib/services/businesses';
+import {
+  COMING_SOON_SERVICES,
+  getOnboardingStatus,
+  SERVICE_SUGGESTIONS
+} from '@/lib/services/businesses';
 import { getSelectableLocationsFromMetadata } from '@/lib/services/integrations/google';
 import { GettingStartedChecklist } from '@/components/onboarding/GettingStartedChecklist';
+import { ServiceAutocompleteInput } from '@/components/onboarding/ServiceAutocompleteInput';
 import {
   completeSetupAction,
   saveBusinessProfileAction,
@@ -17,12 +22,18 @@ import {
   syncNowAction
 } from '../actions';
 
-export default async function SetupPage() {
+export default async function SetupPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const workspace = await getCurrentWorkspace();
   if (!workspace?.business || !workspace.settings) {
     redirect('/sign-in');
   }
 
+  const params = await searchParams;
+  const errorParam = typeof params.error === 'string' ? params.error : '';
   const [onboardingStatus, selectableLocations] = await Promise.all([
     getOnboardingStatus(workspace.business.id),
     Promise.resolve(
@@ -41,9 +52,19 @@ export default async function SetupPage() {
   return (
     <section className="space-y-6">
       <GettingStartedChecklist status={onboardingStatus} />
+      {errorParam === 'incomplete-onboarding' ? (
+        <div className="rounded-[1.25rem] border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Complete all setup steps before continuing to the dashboard.
+        </div>
+      ) : null}
+      {errorParam === 'invalid-service' ? (
+        <div className="rounded-[1.25rem] border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Service is invalid. Use plumbing for now. HVAC, Electrical, and Roofing are coming soon.
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card className="border-border bg-card">
+        <Card id="business-profile" className="scroll-mt-24 bg-card">
           <CardHeader>
             <CardTitle>1. Business profile</CardTitle>
           </CardHeader>
@@ -51,31 +72,37 @@ export default async function SetupPage() {
             <form action={saveBusinessProfileAction} className="space-y-4">
               <div>
                 <Label htmlFor="name">Business name</Label>
-                <Input id="name" name="name" defaultValue={workspace.business.name} className="mt-2 rounded-2xl" />
+                <Input id="name" name="name" defaultValue={workspace.business.name} className="mt-2 rounded-2xl border-0 shadow-none" />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <Label htmlFor="vertical">Service niche</Label>
-                  <Input id="vertical" name="vertical" defaultValue={workspace.business.vertical} className="mt-2 rounded-2xl" />
+                  <Label htmlFor="vertical">Service</Label>
+                  <ServiceAutocompleteInput
+                    id="vertical"
+                    name="vertical"
+                    defaultValue={workspace.business.vertical}
+                    suggestions={SERVICE_SUGGESTIONS}
+                    comingSoon={COMING_SOON_SERVICES}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="timezone">Timezone</Label>
-                  <Input id="timezone" name="timezone" defaultValue={workspace.business.timezone} className="mt-2 rounded-2xl" />
+                  <Input id="timezone" name="timezone" defaultValue={workspace.business.timezone} className="mt-2 rounded-2xl border-0 shadow-none" />
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label htmlFor="primaryPhone">Primary phone</Label>
-                  <Input id="primaryPhone" name="primaryPhone" defaultValue={workspace.business.primaryPhone ?? ''} className="mt-2 rounded-2xl" />
+                  <Input id="primaryPhone" name="primaryPhone" defaultValue={workspace.business.primaryPhone ?? ''} className="mt-2 rounded-2xl border-0 shadow-none" />
                 </div>
                 <div>
                   <Label htmlFor="reviewContactEmail">Review contact email</Label>
-                  <Input id="reviewContactEmail" name="reviewContactEmail" type="email" defaultValue={workspace.business.reviewContactEmail ?? workspace.user.email} className="mt-2 rounded-2xl" />
+                  <Input id="reviewContactEmail" name="reviewContactEmail" type="email" defaultValue={workspace.business.reviewContactEmail ?? workspace.user.email} className="mt-2 rounded-2xl border-0 shadow-none" />
                 </div>
               </div>
               <div>
                 <Label htmlFor="website">Website</Label>
-                <Input id="website" name="website" defaultValue={workspace.business.website ?? ''} className="mt-2 rounded-2xl" />
+                <Input id="website" name="website" defaultValue={workspace.business.website ?? ''} className="mt-2 rounded-2xl border-0 shadow-none" />
               </div>
               <Button className="rounded-full">
                 Save business profile
@@ -84,12 +111,12 @@ export default async function SetupPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card">
+        <Card id="connect-google" className="scroll-mt-24 bg-card">
           <CardHeader>
             <CardTitle>2. Connect Google Business Profile</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-[1.5rem] border border-border bg-muted p-4">
+            <div className="rounded-[1.5rem] bg-muted p-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Link2 className="size-4 text-primary" />
                 Connection status
@@ -159,7 +186,7 @@ export default async function SetupPage() {
         </Card>
       </div>
 
-      <Card className="border-border bg-card">
+      <Card id="drafting-defaults" className="scroll-mt-24 bg-card">
         <CardHeader>
           <CardTitle>3. Drafting and safety defaults</CardTitle>
         </CardHeader>
@@ -167,49 +194,49 @@ export default async function SetupPage() {
           <form action={saveBusinessSettingsAction} className="space-y-4">
             <div>
               <Label htmlFor="brandVoice">Brand voice</Label>
-              <Textarea
-                id="brandVoice"
-                name="brandVoice"
-                defaultValue={workspace.settings.brandVoice}
-                className="mt-2 rounded-[1.5rem]"
-              />
+                <Textarea
+                  id="brandVoice"
+                  name="brandVoice"
+                  defaultValue={workspace.settings.brandVoice}
+                  className="mt-2 rounded-[1.5rem] border-0 shadow-none"
+                />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label htmlFor="signoffName">Sign-off name</Label>
-                <Input id="signoffName" name="signoffName" defaultValue={workspace.settings.signoffName} className="mt-2 rounded-2xl" />
+                  <Input id="signoffName" name="signoffName" defaultValue={workspace.settings.signoffName} className="mt-2 rounded-2xl border-0 shadow-none" />
               </div>
               <div>
                 <Label htmlFor="defaultReplyStyle">Default reply style</Label>
-                <Input id="defaultReplyStyle" name="defaultReplyStyle" defaultValue={workspace.settings.defaultReplyStyle} className="mt-2 rounded-2xl" />
+                  <Input id="defaultReplyStyle" name="defaultReplyStyle" defaultValue={workspace.settings.defaultReplyStyle} className="mt-2 rounded-2xl border-0 shadow-none" />
               </div>
             </div>
             <div>
               <Label htmlFor="escalationMessage">Escalation message</Label>
-              <Textarea
-                id="escalationMessage"
-                name="escalationMessage"
-                defaultValue={workspace.settings.escalationMessage}
-                className="mt-2 rounded-[1.5rem]"
-              />
+                <Textarea
+                  id="escalationMessage"
+                  name="escalationMessage"
+                  defaultValue={workspace.settings.escalationMessage}
+                  className="mt-2 rounded-[1.5rem] border-0 shadow-none"
+                />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <Label htmlFor="allowedPromises">Allowed promises</Label>
-                <Input id="allowedPromises" name="allowedPromises" defaultValue={workspace.settings.allowedPromises.join(', ')} className="mt-2 rounded-2xl" />
+                  <Input id="allowedPromises" name="allowedPromises" defaultValue={workspace.settings.allowedPromises.join(', ')} className="mt-2 rounded-2xl border-0 shadow-none" />
               </div>
               <div>
                 <Label htmlFor="bannedPhrases">Banned phrases</Label>
-                <Input id="bannedPhrases" name="bannedPhrases" defaultValue={workspace.settings.bannedPhrases.join(', ')} className="mt-2 rounded-2xl" />
+                  <Input id="bannedPhrases" name="bannedPhrases" defaultValue={workspace.settings.bannedPhrases.join(', ')} className="mt-2 rounded-2xl border-0 shadow-none" />
               </div>
               <div>
                 <Label htmlFor="notificationEmails">Notification emails</Label>
-                <Input id="notificationEmails" name="notificationEmails" defaultValue={workspace.settings.notificationEmails.join(', ')} className="mt-2 rounded-2xl" />
+                  <Input id="notificationEmails" name="notificationEmails" defaultValue={workspace.settings.notificationEmails.join(', ')} className="mt-2 rounded-2xl border-0 shadow-none" />
               </div>
             </div>
             <div>
               <Label htmlFor="manualReviewRules">Manual review rules</Label>
-              <Input id="manualReviewRules" name="manualReviewRules" defaultValue={workspace.settings.manualReviewRules.join(', ')} className="mt-2 rounded-2xl" />
+                <Input id="manualReviewRules" name="manualReviewRules" defaultValue={workspace.settings.manualReviewRules.join(', ')} className="mt-2 rounded-2xl border-0 shadow-none" />
             </div>
             <div className="flex flex-wrap gap-3">
               <Button className="rounded-full">
@@ -218,11 +245,17 @@ export default async function SetupPage() {
               <button
                 type="submit"
                 formAction={completeSetupAction}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-accent hover:text-accent-foreground"
+                disabled={!onboardingStatus.allComplete}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-foreground"
               >
                 <CheckCircle2 className="size-4" />
                 Mark setup complete
               </button>
+              {!onboardingStatus.allComplete ? (
+                <p className="self-center text-xs text-muted-foreground">
+                  Complete all checklist steps to continue.
+                </p>
+              ) : null}
             </div>
           </form>
         </CardContent>
@@ -248,7 +281,7 @@ export default async function SetupPage() {
         ].map((item) => (
           <Card
             key={item.title}
-            className="border-border bg-card"
+            className="bg-card"
           >
             <CardContent className="flex items-center gap-4 px-6 py-5">
               <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
