@@ -7,9 +7,11 @@ import {
   updateTeamSubscription
 } from '@/lib/db/queries';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-04-30.basil'
-});
+export const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-04-30.basil'
+    })
+  : null;
 
 export async function createCheckoutSession({
   team,
@@ -22,6 +24,10 @@ export async function createCheckoutSession({
 
   if (!team || !user) {
     redirect(`/sign-up?redirect=checkout&priceId=${priceId}`);
+  }
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -49,6 +55,10 @@ export async function createCheckoutSession({
 export async function createCustomerPortalSession(team: Team) {
   if (!team.stripeCustomerId || !team.stripeProductId) {
     redirect('/pricing');
+  }
+
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
   }
 
   let configuration: Stripe.BillingPortal.Configuration;
@@ -117,6 +127,10 @@ export async function createCustomerPortalSession(team: Team) {
 export async function handleSubscriptionChange(
   subscription: Stripe.Subscription
 ) {
+  if (!stripe) {
+    throw new Error('Stripe is not configured');
+  }
+
   const customerId = subscription.customer as string;
   const subscriptionId = subscription.id;
   const status = subscription.status;
@@ -147,6 +161,10 @@ export async function handleSubscriptionChange(
 }
 
 export async function getStripePrices() {
+  if (!stripe) {
+    return [];
+  }
+
   const prices = await stripe.prices.list({
     expand: ['data.product'],
     active: true,
@@ -165,6 +183,10 @@ export async function getStripePrices() {
 }
 
 export async function getStripeProducts() {
+  if (!stripe) {
+    return [];
+  }
+
   const products = await stripe.products.list({
     active: true,
     expand: ['data.default_price']

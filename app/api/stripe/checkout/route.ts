@@ -7,6 +7,10 @@ import { stripe } from '@/lib/payments/stripe';
 import Stripe from 'stripe';
 
 export async function GET(request: NextRequest) {
+  if (!stripe) {
+    return NextResponse.redirect(new URL('/pricing', request.url));
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const sessionId = searchParams.get('session_id');
 

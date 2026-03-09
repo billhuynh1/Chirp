@@ -14,7 +14,7 @@ import {
 import { ActivityType } from '@/lib/db/schema';
 import { getActivityLogs } from '@/lib/db/queries';
 
-const iconMap: Record<ActivityType, LucideIcon> = {
+const iconMap: Partial<Record<ActivityType, LucideIcon>> = {
   [ActivityType.SIGN_UP]: UserPlus,
   [ActivityType.SIGN_IN]: UserCog,
   [ActivityType.SIGN_OUT]: LogOut,
@@ -73,10 +73,10 @@ export default async function ActivityPage() {
 
   return (
     <section className="flex-1 p-4 lg:p-8">
-      <h1 className="text-lg lg:text-2xl font-medium text-gray-900 mb-6">
+      <h1 className="mb-6 text-lg font-medium text-gray-900 dark:text-white lg:text-2xl">
         Activity Log
       </h1>
-      <Card>
+      <Card className="dark:border-white/10 dark:bg-[#111b1d]/90">
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>
@@ -91,15 +91,15 @@ export default async function ActivityPage() {
 
                 return (
                   <li key={log.id} className="flex items-center space-x-4">
-                    <div className="bg-orange-100 rounded-full p-2">
-                      <Icon className="w-5 h-5 text-orange-600" />
+                    <div className="rounded-full bg-orange-100 p-2 dark:bg-[#173033]">
+                      <Icon className="h-5 w-5 text-orange-600 dark:text-[#8ce99a]" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
                         {formattedAction}
                         {log.ipAddress && ` from IP ${log.ipAddress}`}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-slate-400">
                         {getRelativeTime(new Date(log.timestamp))}
                       </p>
                     </div>
@@ -108,12 +108,12 @@ export default async function ActivityPage() {
               })}
             </ul>
           ) : (
-            <div className="flex flex-col items-center justify-center text-center py-12">
-              <AlertCircle className="h-12 w-12 text-orange-500 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertCircle className="mb-4 h-12 w-12 text-orange-500 dark:text-[#8ce99a]" />
+              <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
                 No activity yet
               </h3>
-              <p className="text-sm text-gray-500 max-w-sm">
+              <p className="max-w-sm text-sm text-gray-500 dark:text-slate-400">
                 When you perform actions like signing in or updating your
                 account, they'll appear here.
               </p>

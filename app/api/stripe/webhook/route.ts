@@ -1,14 +1,20 @@
-import Stripe from 'stripe';
 import { handleSubscriptionChange, stripe } from '@/lib/payments/stripe';
 import { NextRequest, NextResponse } from 'next/server';
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(request: NextRequest) {
+  if (!stripe || !webhookSecret) {
+    return NextResponse.json(
+      { error: 'Stripe is not configured.' },
+      { status: 503 }
+    );
+  }
+
   const payload = await request.text();
   const signature = request.headers.get('stripe-signature') as string;
 
-  let event: Stripe.Event;
+  let event;
 
   try {
     event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
@@ -23,7 +29,7 @@ export async function POST(request: NextRequest) {
   switch (event.type) {
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted':
-      const subscription = event.data.object as Stripe.Subscription;
+      const subscription = event.data.object;
       await handleSubscriptionChange(subscription);
       break;
     default:

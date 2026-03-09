@@ -1,94 +1,61 @@
-import { checkoutAction } from '@/lib/payments/actions';
-import { Check } from 'lucide-react';
-import { getStripePrices, getStripeProducts } from '@/lib/payments/stripe';
-import { SubmitButton } from './submit-button';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Prices are fresh for one hour max
-export const revalidate = 3600;
+const plans = [
+  {
+    name: 'Founding',
+    price: '$49',
+    description: 'Per location / month for the first 5 customers.',
+    features: ['Google review inbox', 'AI draft generation', 'Urgent email alerts']
+  },
+  {
+    name: 'Standard',
+    price: '$79',
+    description: 'Per location / month with a soft 100-review cap.',
+    features: ['Everything in Founding', 'Multi-location support', 'Priority onboarding']
+  }
+];
 
-export default async function PricingPage() {
-  const [prices, products] = await Promise.all([
-    getStripePrices(),
-    getStripeProducts(),
-  ]);
-
-  const basePlan = products.find((product) => product.name === 'Base');
-  const plusPlan = products.find((product) => product.name === 'Plus');
-
-  const basePrice = prices.find((price) => price.productId === basePlan?.id);
-  const plusPrice = prices.find((price) => price.productId === plusPlan?.id);
-
+export default function PricingPage() {
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="grid md:grid-cols-2 gap-8 max-w-xl mx-auto">
-        <PricingCard
-          name={basePlan?.name || 'Base'}
-          price={basePrice?.unitAmount || 800}
-          interval={basePrice?.interval || 'month'}
-          trialDays={basePrice?.trialPeriodDays || 7}
-          features={[
-            'Unlimited Usage',
-            'Unlimited Workspace Members',
-            'Email Support',
-          ]}
-          priceId={basePrice?.id}
-        />
-        <PricingCard
-          name={plusPlan?.name || 'Plus'}
-          price={plusPrice?.unitAmount || 1200}
-          interval={plusPrice?.interval || 'month'}
-          trialDays={plusPrice?.trialPeriodDays || 7}
-          features={[
-            'Everything in Base, and:',
-            'Early Access to New Features',
-            '24/7 Support + Slack Access',
-          ]}
-          priceId={plusPrice?.id}
-        />
+    <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-2xl text-center">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9b4629]">
+          Pricing
+        </p>
+        <h1 className="mt-4 text-4xl font-semibold text-slate-950 dark:text-white">
+          Simple pricing for local home service teams
+        </h1>
+        <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
+          Start with one location, keep the workflow tight, and expand after the
+          inbox is working for your team.
+        </p>
+      </div>
+
+      <div className="mt-12 grid gap-6 md:grid-cols-2">
+        {plans.map((plan) => (
+          <Card
+            key={plan.name}
+            className="border-black/10 bg-white/90 dark:border-white/10 dark:bg-[#111b1d]/90"
+          >
+            <CardHeader>
+              <CardTitle className="text-2xl">{plan.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-semibold text-slate-950 dark:text-white">{plan.price}</div>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{plan.description}</p>
+              <ul className="mt-6 space-y-3 text-sm text-slate-700 dark:text-slate-200">
+                {plan.features.map((feature) => (
+                  <li key={feature}>• {feature}</li>
+                ))}
+              </ul>
+              <Button className="mt-8 rounded-full bg-[#c85c36] text-white hover:bg-[#b64a25]">
+                Join waitlist
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </main>
-  );
-}
-
-function PricingCard({
-  name,
-  price,
-  interval,
-  trialDays,
-  features,
-  priceId,
-}: {
-  name: string;
-  price: number;
-  interval: string;
-  trialDays: number;
-  features: string[];
-  priceId?: string;
-}) {
-  return (
-    <div className="pt-6">
-      <h2 className="text-2xl font-medium text-gray-900 mb-2">{name}</h2>
-      <p className="text-sm text-gray-600 mb-4">
-        with {trialDays} day free trial
-      </p>
-      <p className="text-4xl font-medium text-gray-900 mb-6">
-        ${price / 100}{' '}
-        <span className="text-xl font-normal text-gray-600">
-          per user / {interval}
-        </span>
-      </p>
-      <ul className="space-y-4 mb-8">
-        {features.map((feature, index) => (
-          <li key={index} className="flex items-start">
-            <Check className="h-5 w-5 text-orange-500 mr-2 mt-0.5 flex-shrink-0" />
-            <span className="text-gray-700">{feature}</span>
-          </li>
-        ))}
-      </ul>
-      <form action={checkoutAction}>
-        <input type="hidden" name="priceId" value={priceId} />
-        <SubmitButton />
-      </form>
-    </div>
   );
 }
