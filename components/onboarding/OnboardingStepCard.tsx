@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Building2, CheckCircle2, Link2, Sparkles } from 'lucide-react';
+import type { MouseEvent } from 'react';
 import type { OnboardingStep } from '@/lib/services/businesses';
 import { cn } from '@/lib/utils';
 
@@ -11,10 +12,12 @@ const stepIcons = {
 
 export function OnboardingStepCard({
   step,
-  onStepActivate
+  onStepActivate,
+  isActive = false
 }: {
   step: OnboardingStep;
   onStepActivate?: () => void;
+  isActive?: boolean;
 }) {
   const triggerSectionFlash = () => {
     const [, hash] = step.href.split('#');
@@ -34,18 +37,44 @@ export function OnboardingStepCard({
 
   const StepIcon = step.isComplete ? CheckCircle2 : stepIcons[step.iconKey];
 
+  const handleStepClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    onStepActivate?.();
+    triggerSectionFlash();
+
+    const [, hash] = step.href.split('#');
+    if (!hash) {
+      return;
+    }
+
+    const target = document.getElementById(hash);
+    if (!target) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    target.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start'
+    });
+
+    if (window.location.hash !== `#${hash}`) {
+      window.location.hash = hash;
+    }
+  };
+
   return (
     <Link
       href={step.href}
-      onClick={() => {
-        onStepActivate?.();
-        triggerSectionFlash();
-      }}
+      aria-current={isActive ? 'step' : undefined}
+      onClick={handleStepClick}
       className={cn(
-        'group flex cursor-pointer items-center gap-4 rounded-2xl p-4 transition-[transform,background-color,color] duration-150 ease-out active:scale-[0.99]',
+        'group flex cursor-pointer items-center gap-4 rounded-2xl p-4 transition-[transform,background-color,color,box-shadow] duration-150 ease-out active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
         step.isComplete
           ? 'bg-primary/10'
-          : 'bg-muted hover:bg-accent'
+          : 'bg-muted hover:bg-accent',
+        isActive && 'ring-2 ring-ring/40 bg-accent'
       )}
     >
       <div

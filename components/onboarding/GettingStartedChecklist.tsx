@@ -14,6 +14,19 @@ export function GettingStartedChecklist({
   status: OnboardingStatus;
 }) {
   const [stepFeedbackActive, setStepFeedbackActive] = useState(false);
+  const [activeStepHash, setActiveStepHash] = useState('');
+
+  useEffect(() => {
+    const syncHash = () => {
+      setActiveStepHash(window.location.hash.replace('#', ''));
+    };
+
+    window.addEventListener('hashchange', syncHash);
+
+    return () => {
+      window.removeEventListener('hashchange', syncHash);
+    };
+  }, []);
 
   const triggerStepFeedback = useCallback(() => {
     setStepFeedbackActive(false);
@@ -96,7 +109,7 @@ export function GettingStartedChecklist({
         </div>
         <span
           className={cn(
-            'shrink-0 text-xs font-semibold text-muted-foreground',
+            'shrink-0 text-sm font-semibold text-muted-foreground',
             stepFeedbackActive && 'setup-count-pulse'
           )}
         >
@@ -104,15 +117,17 @@ export function GettingStartedChecklist({
         </span>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <ul className="mt-4 space-y-2" aria-label="Setup steps">
         {status.steps.map((step) => (
-          <OnboardingStepCard
-            key={step.id}
-            step={step}
-            onStepActivate={triggerStepFeedback}
-          />
+          <li key={step.id} className="list-none">
+            <OnboardingStepCard
+              step={step}
+              isActive={activeStepHash.length > 0 && step.href.endsWith(`#${activeStepHash}`)}
+              onStepActivate={triggerStepFeedback}
+            />
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

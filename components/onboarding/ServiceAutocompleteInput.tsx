@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 type ServiceAutocompleteInputProps = {
   id: string;
@@ -9,6 +10,8 @@ type ServiceAutocompleteInputProps = {
   defaultValue: string;
   suggestions: string[];
   comingSoon: readonly string[];
+  className?: string;
+  ariaDescribedBy?: string;
 };
 
 export function ServiceAutocompleteInput({
@@ -16,7 +19,9 @@ export function ServiceAutocompleteInput({
   name,
   defaultValue,
   suggestions,
-  comingSoon
+  comingSoon,
+  className,
+  ariaDescribedBy
 }: ServiceAutocompleteInputProps) {
   const [value, setValue] = useState(defaultValue);
   const [isOpen, setIsOpen] = useState(false);
@@ -48,6 +53,7 @@ export function ServiceAutocompleteInput({
         name={name}
         value={value}
         autoComplete="off"
+        aria-describedby={ariaDescribedBy}
         onFocus={() => setIsOpen(true)}
         onBlur={() => {
           setTimeout(() => setIsOpen(false), 120);
@@ -56,7 +62,7 @@ export function ServiceAutocompleteInput({
           setValue(event.target.value);
           setIsOpen(true);
         }}
-        className="mt-2 rounded-2xl border-0 shadow-none"
+        className={cn('mt-2 rounded-2xl border-0 shadow-none', className)}
       />
 
       {showMenu ? (

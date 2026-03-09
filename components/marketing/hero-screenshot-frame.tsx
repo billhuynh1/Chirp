@@ -46,7 +46,7 @@ export function HeroScreenshotFrame({ src, alt }: HeroScreenshotFrameProps) {
                 <p className="text-xs text-slate-500 dark:text-slate-400">Google reviews</p>
               </div>
             </div>
-            <Badge variant="warning" className="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200">
+            <Badge variant="warning">
               3 need approval
             </Badge>
           </div>

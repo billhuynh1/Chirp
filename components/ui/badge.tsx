@@ -12,7 +12,7 @@ const badgeVariants = cva(
         success:
           'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-500/25 dark:bg-emerald-500/15 dark:text-emerald-200',
         warning:
-          'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-400/25 dark:bg-amber-400/15 dark:text-amber-200',
+          'border-secondary/30 bg-secondary/15 text-secondary',
         danger:
           'border-rose-200 bg-rose-100 text-rose-800 dark:border-rose-400/25 dark:bg-rose-400/15 dark:text-rose-200',
         neutral:

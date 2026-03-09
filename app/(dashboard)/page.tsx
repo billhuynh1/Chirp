@@ -220,10 +220,10 @@ export default function HomePage() {
                     </div>
                     <Badge variant="danger">Owner review</Badge>
                   </div>
-                  <div className="flex items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/80 p-4 dark:border-amber-400/20 dark:bg-amber-500/10">
+                  <div className="flex items-center justify-between rounded-2xl border border-secondary/30 bg-secondary/10 p-4">
                     <div>
-                      <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Draft generated</p>
-                      <p className="mt-1 text-sm text-amber-700 dark:text-amber-200/80">
+                      <p className="text-sm font-semibold text-foreground">Draft generated</p>
+                      <p className="mt-1 text-sm text-secondary">
                         Safe reply ready for edit before posting.
                       </p>
                     </div>

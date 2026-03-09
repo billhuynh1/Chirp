@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { CheckCircle2, Link2, MapPinned, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -48,31 +48,59 @@ export default async function SetupPage({
   )
     ? (workspace.connectedAccount?.metadata?.['selectedLocationIds'] as string[])
     : [];
+  const fieldSurfaceClass =
+    'mt-2 rounded-2xl border-0 bg-muted/70 shadow-none focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/60';
 
   return (
     <section className="space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          Set up your workspace
+        </h1>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          Complete your business details, connect Google Business Profile, and configure
+          drafting defaults before continuing to the dashboard.
+        </p>
+      </div>
+
       <GettingStartedChecklist status={onboardingStatus} />
       {errorParam === 'incomplete-onboarding' ? (
-        <div className="rounded-[1.25rem] border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="rounded-[1.25rem] border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
           Complete all setup steps before continuing to the dashboard.
         </div>
       ) : null}
       {errorParam === 'invalid-service' ? (
-        <div className="rounded-[1.25rem] border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="rounded-[1.25rem] border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
           Service is invalid. Use plumbing for now. HVAC, Electrical, and Roofing are coming soon.
         </div>
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <Card id="business-profile" className="scroll-mt-24 bg-card">
-          <CardHeader>
-            <CardTitle>1. Business profile</CardTitle>
+          <CardHeader className="space-y-2">
+            <h2 className="text-xl font-semibold text-foreground">1. Business profile</h2>
+            <p className="text-sm text-muted-foreground">
+              Add core business details used for review routing and reply style.
+            </p>
           </CardHeader>
           <CardContent>
             <form action={saveBusinessProfileAction} className="space-y-4">
               <div>
                 <Label htmlFor="name">Business name</Label>
-                <Input id="name" name="name" defaultValue={workspace.business.name} className="mt-2 rounded-2xl border-0 shadow-none" />
+                <Input
+                  id="name"
+                  name="name"
+                  defaultValue={workspace.business.name}
+                  className={fieldSurfaceClass}
+                />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
@@ -83,26 +111,52 @@ export default async function SetupPage({
                     defaultValue={workspace.business.vertical}
                     suggestions={SERVICE_SUGGESTIONS}
                     comingSoon={COMING_SOON_SERVICES}
+                    ariaDescribedBy="service-help"
+                    className={fieldSurfaceClass}
                   />
+                  <p id="service-help" className="mt-2 text-sm text-muted-foreground">
+                    Currently available: plumbing.
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="timezone">Timezone</Label>
-                  <Input id="timezone" name="timezone" defaultValue={workspace.business.timezone} className="mt-2 rounded-2xl border-0 shadow-none" />
+                  <Input
+                    id="timezone"
+                    name="timezone"
+                    defaultValue={workspace.business.timezone}
+                    className={fieldSurfaceClass}
+                  />
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label htmlFor="primaryPhone">Primary phone</Label>
-                  <Input id="primaryPhone" name="primaryPhone" defaultValue={workspace.business.primaryPhone ?? ''} className="mt-2 rounded-2xl border-0 shadow-none" />
+                  <Input
+                    id="primaryPhone"
+                    name="primaryPhone"
+                    defaultValue={workspace.business.primaryPhone ?? ''}
+                    className={fieldSurfaceClass}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="reviewContactEmail">Review contact email</Label>
-                  <Input id="reviewContactEmail" name="reviewContactEmail" type="email" defaultValue={workspace.business.reviewContactEmail ?? workspace.user.email} className="mt-2 rounded-2xl border-0 shadow-none" />
+                  <Input
+                    id="reviewContactEmail"
+                    name="reviewContactEmail"
+                    type="email"
+                    defaultValue={workspace.business.reviewContactEmail ?? workspace.user.email}
+                    className={fieldSurfaceClass}
+                  />
                 </div>
               </div>
               <div>
                 <Label htmlFor="website">Website</Label>
-                <Input id="website" name="website" defaultValue={workspace.business.website ?? ''} className="mt-2 rounded-2xl border-0 shadow-none" />
+                <Input
+                  id="website"
+                  name="website"
+                  defaultValue={workspace.business.website ?? ''}
+                  className={fieldSurfaceClass}
+                />
               </div>
               <Button className="rounded-full">
                 Save business profile
@@ -112,8 +166,13 @@ export default async function SetupPage({
         </Card>
 
         <Card id="connect-google" className="scroll-mt-24 bg-card">
-          <CardHeader>
-            <CardTitle>2. Connect Google Business Profile</CardTitle>
+          <CardHeader className="space-y-2">
+            <h2 className="text-xl font-semibold text-foreground">
+              2. Connect Google Business Profile
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Link your account and choose at least one location to import reviews.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-[1.5rem] bg-muted p-4">
@@ -187,56 +246,95 @@ export default async function SetupPage({
       </div>
 
       <Card id="drafting-defaults" className="scroll-mt-24 bg-card">
-        <CardHeader>
-          <CardTitle>3. Drafting and safety defaults</CardTitle>
+        <CardHeader className="space-y-2">
+          <h2 className="text-xl font-semibold text-foreground">
+            3. Drafting and safety defaults
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Configure tone, escalation, and guardrails for reply generation.
+          </p>
         </CardHeader>
         <CardContent>
           <form action={saveBusinessSettingsAction} className="space-y-4">
             <div>
               <Label htmlFor="brandVoice">Brand voice</Label>
-                <Textarea
-                  id="brandVoice"
-                  name="brandVoice"
-                  defaultValue={workspace.settings.brandVoice}
-                  className="mt-2 rounded-[1.5rem] border-0 shadow-none"
-                />
+              <Textarea
+                id="brandVoice"
+                name="brandVoice"
+                defaultValue={workspace.settings.brandVoice}
+                className={`${fieldSurfaceClass} rounded-[1.5rem]`}
+              />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label htmlFor="signoffName">Sign-off name</Label>
-                  <Input id="signoffName" name="signoffName" defaultValue={workspace.settings.signoffName} className="mt-2 rounded-2xl border-0 shadow-none" />
+                <Input
+                  id="signoffName"
+                  name="signoffName"
+                  defaultValue={workspace.settings.signoffName}
+                  className={fieldSurfaceClass}
+                />
               </div>
               <div>
                 <Label htmlFor="defaultReplyStyle">Default reply style</Label>
-                  <Input id="defaultReplyStyle" name="defaultReplyStyle" defaultValue={workspace.settings.defaultReplyStyle} className="mt-2 rounded-2xl border-0 shadow-none" />
+                <Input
+                  id="defaultReplyStyle"
+                  name="defaultReplyStyle"
+                  defaultValue={workspace.settings.defaultReplyStyle}
+                  className={fieldSurfaceClass}
+                />
               </div>
             </div>
             <div>
               <Label htmlFor="escalationMessage">Escalation message</Label>
-                <Textarea
-                  id="escalationMessage"
-                  name="escalationMessage"
-                  defaultValue={workspace.settings.escalationMessage}
-                  className="mt-2 rounded-[1.5rem] border-0 shadow-none"
-                />
+              <Textarea
+                id="escalationMessage"
+                name="escalationMessage"
+                defaultValue={workspace.settings.escalationMessage}
+                className={`${fieldSurfaceClass} rounded-[1.5rem]`}
+              />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <Label htmlFor="allowedPromises">Allowed promises</Label>
-                  <Input id="allowedPromises" name="allowedPromises" defaultValue={workspace.settings.allowedPromises.join(', ')} className="mt-2 rounded-2xl border-0 shadow-none" />
+                <Input
+                  id="allowedPromises"
+                  name="allowedPromises"
+                  defaultValue={workspace.settings.allowedPromises.join(', ')}
+                  className={fieldSurfaceClass}
+                />
               </div>
               <div>
                 <Label htmlFor="bannedPhrases">Banned phrases</Label>
-                  <Input id="bannedPhrases" name="bannedPhrases" defaultValue={workspace.settings.bannedPhrases.join(', ')} className="mt-2 rounded-2xl border-0 shadow-none" />
+                <Input
+                  id="bannedPhrases"
+                  name="bannedPhrases"
+                  defaultValue={workspace.settings.bannedPhrases.join(', ')}
+                  className={fieldSurfaceClass}
+                />
               </div>
               <div>
                 <Label htmlFor="notificationEmails">Notification emails</Label>
-                  <Input id="notificationEmails" name="notificationEmails" defaultValue={workspace.settings.notificationEmails.join(', ')} className="mt-2 rounded-2xl border-0 shadow-none" />
+                <Input
+                  id="notificationEmails"
+                  name="notificationEmails"
+                  defaultValue={workspace.settings.notificationEmails.join(', ')}
+                  className={fieldSurfaceClass}
+                />
               </div>
             </div>
             <div>
               <Label htmlFor="manualReviewRules">Manual review rules</Label>
-                <Input id="manualReviewRules" name="manualReviewRules" defaultValue={workspace.settings.manualReviewRules.join(', ')} className="mt-2 rounded-2xl border-0 shadow-none" />
+              <Input
+                id="manualReviewRules"
+                name="manualReviewRules"
+                aria-describedby="manualReviewRules-help"
+                defaultValue={workspace.settings.manualReviewRules.join(', ')}
+                className={fieldSurfaceClass}
+              />
+              <p id="manualReviewRules-help" className="mt-2 text-sm text-muted-foreground">
+                Comma-separated triggers that always require manual review.
+              </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button className="rounded-full">
@@ -252,7 +350,7 @@ export default async function SetupPage({
                 Mark setup complete
               </button>
               {!onboardingStatus.allComplete ? (
-                <p className="self-center text-xs text-muted-foreground">
+                <p className="self-center text-sm text-muted-foreground">
                   Complete all checklist steps to continue.
                 </p>
               ) : null}
