@@ -16,6 +16,13 @@ export default async function SettingsPage() {
     redirect('/sign-in');
   }
 
+  const saveBusinessProfileFormAction = saveBusinessProfileAction as unknown as (
+    formData: FormData
+  ) => Promise<void>;
+  const saveBusinessSettingsFormAction = saveBusinessSettingsAction as unknown as (
+    formData: FormData
+  ) => Promise<void>;
+
   return (
     <section className="space-y-6">
       <div className="rounded-[2rem] border border-black/10 bg-white/85 p-6 dark:border-white/10 dark:bg-[#111b1d]/90">
@@ -33,7 +40,7 @@ export default async function SettingsPage() {
             <CardTitle>Business profile</CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={saveBusinessProfileAction} className="space-y-4">
+            <form action={saveBusinessProfileFormAction} className="space-y-4">
               <div>
                 <Label htmlFor="name">Business name</Label>
                 <Input id="name" name="name" defaultValue={workspace.business.name} className="mt-2 rounded-2xl" />
@@ -70,7 +77,7 @@ export default async function SettingsPage() {
             <CardTitle>Draft rules</CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={saveBusinessSettingsAction} className="space-y-4">
+            <form action={saveBusinessSettingsFormAction} className="space-y-4">
               <div>
                 <Label htmlFor="brandVoice">Brand voice</Label>
                 <Textarea id="brandVoice" name="brandVoice" defaultValue={workspace.settings.brandVoice} className="mt-2 rounded-[1.5rem]" />

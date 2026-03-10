@@ -5,15 +5,13 @@ import type { FocusEvent, FormEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-type ServiceAutocompleteInputProps = {
+type TimezoneAutocompleteInputProps = {
   id: string;
   name: string;
   defaultValue: string;
   suggestions: string[];
-  comingSoon: readonly string[];
   className?: string;
   ariaDescribedBy?: string;
-  placeholder?: string;
   required?: boolean;
   pattern?: string;
   title?: string;
@@ -25,15 +23,13 @@ type ServiceAutocompleteInputProps = {
   ariaInvalid?: boolean;
 };
 
-export function ServiceAutocompleteInput({
+export function TimezoneAutocompleteInput({
   id,
   name,
   defaultValue,
   suggestions,
-  comingSoon,
   className,
   ariaDescribedBy,
-  placeholder,
   required,
   pattern,
   title,
@@ -43,7 +39,7 @@ export function ServiceAutocompleteInput({
   onBlur,
   onInvalid,
   ariaInvalid
-}: ServiceAutocompleteInputProps) {
+}: TimezoneAutocompleteInputProps) {
   const [value, setValue] = useState(defaultValue);
   const [isOpen, setIsOpen] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -55,10 +51,10 @@ export function ServiceAutocompleteInput({
     }
   }, [isLocked, lockOnSelect]);
 
-  const normalizedQuery = value.trim().toLowerCase();
+  const normalizedQuery = value.trim().toLowerCase().replaceAll('_', ' ');
   const activeQuery = isLocked ? '' : normalizedQuery;
 
-  const filteredAvailable = useMemo(() => {
+  const filteredSuggestions = useMemo(() => {
     if (!activeQuery) {
       return suggestions;
     }
@@ -66,15 +62,7 @@ export function ServiceAutocompleteInput({
     return suggestions.filter((option) => option.toLowerCase().includes(activeQuery));
   }, [activeQuery, suggestions]);
 
-  const filteredComingSoon = useMemo(() => {
-    if (!activeQuery) {
-      return [...comingSoon];
-    }
-
-    return comingSoon.filter((option) => option.toLowerCase().includes(activeQuery));
-  }, [activeQuery, comingSoon]);
-
-  const showMenu = isOpen && (filteredAvailable.length > 0 || filteredComingSoon.length > 0);
+  const showMenu = isOpen && filteredSuggestions.length > 0;
 
   return (
     <div className="relative">
@@ -88,7 +76,6 @@ export function ServiceAutocompleteInput({
         autoComplete="off"
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
-        placeholder={placeholder}
         readOnly={isReadOnly}
         onFocus={() => setIsOpen(true)}
         onBlur={(event) => {
@@ -109,49 +96,28 @@ export function ServiceAutocompleteInput({
 
       {showMenu ? (
         <div className="absolute z-20 mt-2 w-full rounded-xl bg-popover p-1 shadow-sm">
-          {filteredAvailable.length > 0 ? (
-            <>
-              <div className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Available now
-              </div>
-              {filteredAvailable.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    setValue(option);
-                    onValueChange?.(option);
-                    setIsOpen(false);
-                    if (lockOnSelect) {
-                      setIsLocked(true);
-                      onLockChange?.(true);
-                    }
-                  }}
-                  className="block w-full rounded-lg px-2 py-1.5 text-left text-sm text-popover-foreground transition hover:bg-accent hover:text-accent-foreground"
-                >
-                  {option}
-                </button>
-              ))}
-            </>
-          ) : null}
-
-          {filteredComingSoon.length > 0 ? (
-            <>
-              <div className="mt-1 px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Coming soon
-              </div>
-              {filteredComingSoon.map((option) => (
-                <div
-                  key={option}
-                  aria-disabled="true"
-                  className="block w-full rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground opacity-70"
-                >
-                  {option} (coming soon)
-                </div>
-              ))}
-            </>
-          ) : null}
+          <div className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Timezones
+          </div>
+          {filteredSuggestions.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onMouseDown={(event) => {
+                event.preventDefault();
+                setValue(option);
+                onValueChange?.(option);
+                setIsOpen(false);
+                if (lockOnSelect) {
+                  setIsLocked(true);
+                  onLockChange?.(true);
+                }
+              }}
+              className="block w-full rounded-lg px-2 py-1.5 text-left text-sm text-popover-foreground transition hover:bg-accent hover:text-accent-foreground"
+            >
+              {option}
+            </button>
+          ))}
         </div>
       ) : null}
     </div>

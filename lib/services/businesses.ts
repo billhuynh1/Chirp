@@ -10,24 +10,25 @@ import {
   type NewBusiness,
   type NewBusinessSettings
 } from '@/lib/db/schema';
+import {
+  ACTIVE_SERVICE_VALUES,
+  ALLOWED_TIMEZONE_VALUES,
+  COMING_SOON_SERVICE_LABELS,
+  TIMEZONE_SUGGESTION_LABELS,
+  isAllowedTimezoneValue,
+  normalizeServiceValue,
+  normalizeTimezoneValue
+} from '@/lib/validation/business-profile';
 
-const SERVICE_ALIASES = {
-  plumbing: 'plumbing',
-  plumber: 'plumbing'
-} as const;
+export const SERVICE_SUGGESTIONS = [...ACTIVE_SERVICE_VALUES];
 
-export const SERVICE_SUGGESTIONS = ['plumbing'];
+export const COMING_SOON_SERVICES = [...COMING_SOON_SERVICE_LABELS];
 
-export const COMING_SOON_SERVICES = ['HVAC', 'Electrical', 'Roofing'] as const;
+export const ALLOWED_TIMEZONES = [...ALLOWED_TIMEZONE_VALUES];
 
-export function normalizeServiceValue(input: string | null | undefined) {
-  if (!input) {
-    return null;
-  }
+export const TIMEZONE_SUGGESTIONS = [...TIMEZONE_SUGGESTION_LABELS];
 
-  const normalized = input.trim().toLowerCase();
-  return SERVICE_ALIASES[normalized as keyof typeof SERVICE_ALIASES] ?? null;
-}
+export { normalizeServiceValue, normalizeTimezoneValue, isAllowedTimezoneValue };
 
 export async function createDefaultBusiness({
   teamId,
@@ -245,10 +246,7 @@ export async function getOnboardingStatus(
   const hasGoogleConnected = !!googleAccount && !!activeLocation;
 
   const hasConfiguredDrafts =
-    !!settings &&
-    (settings.brandVoice !==
-      'Helpful, calm, and professional. Focus on service, cleanliness, and responsiveness.' ||
-      settings.signoffName !== (business?.name ?? 'The Team'));
+    !!settings && settings.updatedAt.getTime() > settings.createdAt.getTime();
 
   const steps: OnboardingStep[] = [
     {

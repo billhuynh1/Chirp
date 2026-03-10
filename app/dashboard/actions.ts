@@ -8,10 +8,15 @@ import { createAuditLog } from '@/lib/services/audit';
 import {
   completeBusinessOnboarding,
   getOnboardingStatus,
-  normalizeServiceValue,
   updateBusinessProfile,
   updateBusinessSettings
 } from '@/lib/services/businesses';
+import {
+  isAllowedTimezoneValue,
+  normalizeServiceValue,
+  normalizeTimezoneValue,
+  normalizeUsPhoneToE164
+} from '@/lib/validation/business-profile';
 import { queueJob } from '@/lib/services/job-queue';
 import { processPendingJobs } from '@/lib/services/jobs';
 import {
@@ -21,6 +26,12 @@ import {
   rejectDraft
 } from '@/lib/services/reviews';
 import { selectGoogleLocationsForBusiness } from '@/lib/services/integrations/google';
+import type {
+  SetupOnboardingSnapshot,
+  SetupStepActionError,
+  SetupStepActionResult,
+  SetupStepId
+} from '@/lib/types/setup-step-action';
 
 function csvToArray(value: string | null) {
   if (!value) {
@@ -31,6 +42,67 @@ function csvToArray(value: string | null) {
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function getSetupSuccessRedirect(formData: FormData) {
+  const value = formData.get('_successRedirect');
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  try {
+    const url = new URL(value, 'http://localhost');
+    if (url.origin !== 'http://localhost' || url.pathname !== '/dashboard/setup') {
+      return null;
+    }
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+function isInlineResponseMode(formData: FormData) {
+  return formData.get('_responseMode') === 'inline';
+}
+
+function getFormData(args: [FormData] | [SetupStepActionResult | null, FormData]) {
+  return args.length === 1 ? args[0] : args[1];
+}
+
+function toOnboardingSnapshot(status: Awaited<ReturnType<typeof getOnboardingStatus>>): SetupOnboardingSnapshot {
+  return {
+    completedCount: status.completedCount,
+    totalCount: status.totalCount,
+    allComplete: status.allComplete,
+    stepCompletion: {
+      businessProfile:
+        status.steps.find((step) => step.id === 'business_info')?.isComplete ?? false,
+      googleLocations:
+        status.steps.find((step) => step.id === 'connect_google')?.isComplete ?? false,
+      draftingDefaults:
+        status.steps.find((step) => step.id === 'drafting_defaults')?.isComplete ?? false
+    }
+  };
+}
+
+async function getSetupOnboardingSnapshot(businessId: number) {
+  const status = await getOnboardingStatus(businessId);
+  return toOnboardingSnapshot(status);
+}
+
+async function buildInlineErrorResult(
+  businessId: number,
+  step: SetupStepId,
+  errorCode: SetupStepActionError['errorCode'],
+  message: string
+): Promise<SetupStepActionError> {
+  return {
+    ok: false,
+    step,
+    errorCode,
+    message,
+    onboarding: await getSetupOnboardingSnapshot(businessId)
+  };
 }
 
 async function requireWorkspace() {
@@ -54,20 +126,69 @@ const businessProfileSchema = z.object({
   reviewContactEmail: z.string().email().optional().or(z.literal(''))
 });
 
-export async function saveBusinessProfileAction(formData: FormData) {
+export async function saveBusinessProfileAction(
+  ...args: [FormData] | [SetupStepActionResult | null, FormData]
+) {
+  const formData = getFormData(args);
   const workspace = await requireWorkspace();
-  const parsed = businessProfileSchema.parse(Object.fromEntries(formData));
+  const isInline = isInlineResponseMode(formData);
+  const successRedirect = getSetupSuccessRedirect(formData);
+  const parsedResult = businessProfileSchema.safeParse(Object.fromEntries(formData));
+  if (!parsedResult.success) {
+    if (isInline) {
+      return buildInlineErrorResult(
+        workspace.business.id,
+        'business-profile',
+        'invalid-input',
+        'Business profile input is invalid. Check required fields and try again.'
+      );
+    }
+    throw parsedResult.error;
+  }
+  const parsed = parsedResult.data;
   const normalizedService = normalizeServiceValue(parsed.vertical);
+  const normalizedTimezone = normalizeTimezoneValue(parsed.timezone);
+  const normalizedPhone = normalizeUsPhoneToE164(parsed.primaryPhone ?? null);
   if (!normalizedService) {
+    if (isInline) {
+      return buildInlineErrorResult(
+        workspace.business.id,
+        'business-profile',
+        'invalid-service',
+        'Service is invalid. Use plumbing for now.'
+      );
+    }
     redirect('/dashboard/setup?error=invalid-service');
+  }
+  if (!normalizedTimezone || !isAllowedTimezoneValue(normalizedTimezone)) {
+    if (isInline) {
+      return buildInlineErrorResult(
+        workspace.business.id,
+        'business-profile',
+        'invalid-timezone',
+        'Timezone is invalid. Select one of the available options.'
+      );
+    }
+    redirect('/dashboard/setup?error=invalid-timezone');
+  }
+  if (parsed.primaryPhone && !normalizedPhone) {
+    if (isInline) {
+      return buildInlineErrorResult(
+        workspace.business.id,
+        'business-profile',
+        'invalid-phone',
+        'Primary phone is invalid. Enter a valid US phone number.'
+      );
+    }
+    redirect('/dashboard/setup?error=invalid-phone');
   }
 
   await updateBusinessProfile(workspace.business.id, {
     name: parsed.name,
     vertical: normalizedService,
-    primaryPhone: parsed.primaryPhone || null,
+    primaryPhone: normalizedPhone,
     website: parsed.website || null,
-    timezone: parsed.timezone,
+    timezone: normalizedTimezone,
     reviewContactEmail: parsed.reviewContactEmail || null
   });
 
@@ -80,12 +201,32 @@ export async function saveBusinessProfileAction(formData: FormData) {
     action: 'update_business_profile',
     metadata: {
       ...parsed,
-      vertical: normalizedService
+      vertical: normalizedService,
+      timezone: normalizedTimezone,
+      primaryPhone: normalizedPhone
     }
   });
 
   revalidatePath('/dashboard/setup');
   revalidatePath('/dashboard/settings');
+  if (isInline) {
+    return {
+      ok: true,
+      step: 'business-profile',
+      onboarding: await getSetupOnboardingSnapshot(workspace.business.id),
+      summary: {
+        business: {
+          service: normalizedService,
+          timezone: normalizedTimezone,
+          primaryPhone: normalizedPhone,
+          website: parsed.website || null
+        }
+      }
+    } satisfies SetupStepActionResult;
+  }
+  if (successRedirect) {
+    redirect(successRedirect);
+  }
 }
 
 const businessSettingsSchema = z.object({
@@ -99,9 +240,26 @@ const businessSettingsSchema = z.object({
   manualReviewRules: z.string().optional()
 });
 
-export async function saveBusinessSettingsAction(formData: FormData) {
+export async function saveBusinessSettingsAction(
+  ...args: [FormData] | [SetupStepActionResult | null, FormData]
+) {
+  const formData = getFormData(args);
   const workspace = await requireWorkspace();
-  const parsed = businessSettingsSchema.parse(Object.fromEntries(formData));
+  const isInline = isInlineResponseMode(formData);
+  const successRedirect = getSetupSuccessRedirect(formData);
+  const parsedResult = businessSettingsSchema.safeParse(Object.fromEntries(formData));
+  if (!parsedResult.success) {
+    if (isInline) {
+      return buildInlineErrorResult(
+        workspace.business.id,
+        'drafting-defaults',
+        'invalid-input',
+        'Drafting defaults are invalid. Check required fields and try again.'
+      );
+    }
+    throw parsedResult.error;
+  }
+  const parsed = parsedResult.data;
 
   await updateBusinessSettings(workspace.business.id, {
     brandVoice: parsed.brandVoice,
@@ -126,10 +284,31 @@ export async function saveBusinessSettingsAction(formData: FormData) {
 
   revalidatePath('/dashboard/setup');
   revalidatePath('/dashboard/settings');
+  if (isInline) {
+    return {
+      ok: true,
+      step: 'drafting-defaults',
+      onboarding: await getSetupOnboardingSnapshot(workspace.business.id),
+      summary: {
+        drafting: {
+          signoffName: parsed.signoffName,
+          defaultReplyStyle: parsed.defaultReplyStyle
+        }
+      }
+    } satisfies SetupStepActionResult;
+  }
+  if (successRedirect) {
+    redirect(successRedirect);
+  }
 }
 
-export async function selectGoogleLocationsAction(formData: FormData) {
+export async function selectGoogleLocationsAction(
+  ...args: [FormData] | [SetupStepActionResult | null, FormData]
+) {
+  const formData = getFormData(args);
   const workspace = await requireWorkspace();
+  const isInline = isInlineResponseMode(formData);
+  const successRedirect = getSetupSuccessRedirect(formData);
   const connectedAccountId = Number(formData.get('connectedAccountId'));
   const locationIds = formData
     .getAll('locationIds')
@@ -137,14 +316,35 @@ export async function selectGoogleLocationsAction(formData: FormData) {
     .filter(Boolean);
 
   if (!connectedAccountId || locationIds.length === 0) {
+    if (isInline) {
+      return buildInlineErrorResult(
+        workspace.business.id,
+        'google-locations',
+        'invalid-locations',
+        'Select at least one Google location.'
+      );
+    }
     throw new Error('Select at least one Google location');
   }
-
-  const selectedLocations = await selectGoogleLocationsForBusiness({
-    businessId: workspace.business.id,
-    connectedAccountId,
-    locationIds
-  });
+  let selectedLocations;
+  try {
+    selectedLocations = await selectGoogleLocationsForBusiness({
+      businessId: workspace.business.id,
+      connectedAccountId,
+      locationIds
+    });
+  } catch (error) {
+    if (isInline) {
+      const message = error instanceof Error ? error.message : 'Unable to save locations.';
+      return buildInlineErrorResult(
+        workspace.business.id,
+        'google-locations',
+        'server-error',
+        message
+      );
+    }
+    throw error;
+  }
 
   await queueJob({
     jobType: 'sync_reviews',
@@ -170,6 +370,23 @@ export async function selectGoogleLocationsAction(formData: FormData) {
 
   revalidatePath('/dashboard/setup');
   revalidatePath('/dashboard/inbox');
+  if (isInline) {
+    return {
+      ok: true,
+      step: 'google-locations',
+      onboarding: await getSetupOnboardingSnapshot(workspace.business.id),
+      summary: {
+        google: {
+          selectedLocationIds: locationIds,
+          selectedLocationsCount: selectedLocations.length,
+          connectionStatus: workspace.connectedAccount?.status ?? 'active'
+        }
+      }
+    } satisfies SetupStepActionResult;
+  }
+  if (successRedirect) {
+    redirect(successRedirect);
+  }
 }
 
 export async function syncNowAction(formData: FormData) {
@@ -202,6 +419,11 @@ export async function syncNowAction(formData: FormData) {
 
 export async function completeSetupAction() {
   const workspace = await requireWorkspace();
+  if (workspace.business.onboardingCompletedAt) {
+    revalidatePath('/dashboard');
+    redirect('/dashboard');
+  }
+
   const onboardingStatus = await getOnboardingStatus(workspace.business.id);
   if (!onboardingStatus.allComplete) {
     redirect('/dashboard/setup?error=incomplete-onboarding');
@@ -324,18 +546,5 @@ export async function markPostedAction(formData: FormData) {
 }
 
 export async function dismissOnboardingAction() {
-  const workspace = await requireWorkspace();
-  await completeBusinessOnboarding(workspace.business.id);
-
-  await createAuditLog({
-    teamId: workspace.team.id,
-    businessId: workspace.business.id,
-    userId: workspace.user.id,
-    entityType: 'business',
-    entityId: workspace.business.id,
-    action: 'complete_onboarding',
-    metadata: { source: 'checklist_dismiss' }
-  });
-
-  revalidatePath('/dashboard');
+  revalidatePath('/dashboard/setup');
 }

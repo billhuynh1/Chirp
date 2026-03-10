@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
+import { ToastProvider } from '@/components/ui/toast';
 
 export const metadata: Metadata = {
   title: 'Chirp | AI Review Assistant',
@@ -19,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-[100dvh] bg-background text-foreground antialiased">
+      <body suppressHydrationWarning className="min-h-[100dvh] bg-background text-foreground antialiased">
         <Script id="theme-init" strategy="beforeInteractive">
           {`
             (() => {
@@ -31,7 +32,7 @@ export default function RootLayout({
             })();
           `}
         </Script>
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

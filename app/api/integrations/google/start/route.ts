@@ -30,9 +30,10 @@ export async function POST() {
 
   if (isExternalServicesMocked() || !getEnv('GOOGLE_CLIENT_ID')) {
     return NextResponse.redirect(
-      new URL(`/api/integrations/google/callback?state=${state}&mode=mock`, requireEnv('BASE_URL'))
+      new URL(`/api/integrations/google/callback?state=${state}&mode=mock`, requireEnv('BASE_URL')),
+      303
     );
   }
 
-  return NextResponse.redirect(buildGoogleOAuthUrl(state));
+  return NextResponse.redirect(buildGoogleOAuthUrl(state), 303);
 }

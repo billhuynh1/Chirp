@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { PartyPopper, Rocket } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import type { OnboardingStatus } from '@/lib/services/businesses';
 import { OnboardingStepCard } from './OnboardingStepCard';
-import { dismissOnboardingAction } from '@/app/dashboard/actions';
 import { cn } from '@/lib/utils';
 
 export function GettingStartedChecklist({
@@ -62,18 +60,11 @@ export function GettingStartedChecklist({
                 🎉 Chirp is fully set up
               </p>
               <p className="text-sm text-muted-foreground">
-                New reviews will now appear automatically. You&apos;re all set!
+                All steps are saved. Click &quot;Mark setup complete&quot; below to continue to
+                your dashboard.
               </p>
             </div>
           </div>
-          <form action={dismissOnboardingAction}>
-            <Button
-              variant="secondary"
-              className="rounded-full"
-            >
-              Dismiss
-            </Button>
-          </form>
         </div>
       </div>
     );
