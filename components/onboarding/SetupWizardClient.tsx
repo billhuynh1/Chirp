@@ -76,7 +76,8 @@ type SetupWizardClientProps = {
 type StepKey = 'business' | 'google' | 'drafting';
 
 const fieldSurfaceClass =
-  'mt-2 rounded-2xl border-0 bg-muted/70 shadow-none placeholder:text-muted-foreground/80 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/60';
+  'mt-2 rounded-2xl border-0 bg-muted/70 text-foreground shadow-none placeholder:text-muted-foreground/80 placeholder:opacity-100 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/60';
+const textareaFieldSurfaceClass = `${fieldSurfaceClass} px-4 py-2.5`;
 
 function getStepComplete(status: SetupStatus, stepId: string) {
   return status.steps.find((step) => step.id === stepId)?.isComplete ?? false;
@@ -608,10 +609,14 @@ export function SetupWizardClient({
                   <Textarea
                     id="brandVoice"
                     name="brandVoice"
+                    aria-describedby="brandVoice-help"
                     defaultValue={settingsData.brandVoice}
-                    placeholder="Helpful, calm, and professional. Keep responses clear and empathetic."
-                    className={`${fieldSurfaceClass} rounded-[1.5rem]`}
+                    placeholder="Friendly, clear, and professional. Acknowledge concerns and offer a next step."
+                    className={`${textareaFieldSurfaceClass} rounded-[1.5rem]`}
                   />
+                  <p id="brandVoice-help" className="mt-2 text-sm text-muted-foreground">
+                    Used as the baseline tone for generated replies.
+                  </p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
@@ -619,20 +624,27 @@ export function SetupWizardClient({
                     <Input
                       id="signoffName"
                       name="signoffName"
+                      aria-describedby="signoffName-help"
                       defaultValue={settingsData.signoffName}
-                      placeholder="Jane from Acme Plumbing"
                       className={fieldSurfaceClass}
                     />
+                    <p id="signoffName-help" className="mt-2 text-sm text-muted-foreground">
+                      Appears at the end of approved replies.
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="defaultReplyStyle">Default reply style</Label>
                     <Input
                       id="defaultReplyStyle"
                       name="defaultReplyStyle"
+                      aria-describedby="defaultReplyStyle-help"
                       defaultValue={settingsData.defaultReplyStyle}
-                      placeholder="professional"
+                      placeholder="Professional"
                       className={fieldSurfaceClass}
                     />
+                    <p id="defaultReplyStyle-help" className="mt-2 text-sm text-muted-foreground">
+                      Choose a consistent style such as Professional, Warm, or Concise.
+                    </p>
                   </div>
                 </div>
                 <div>
@@ -640,10 +652,14 @@ export function SetupWizardClient({
                   <Textarea
                     id="escalationMessage"
                     name="escalationMessage"
+                    aria-describedby="escalationMessage-help"
                     defaultValue={settingsData.escalationMessage}
                     placeholder="Please contact our office so we can review this and help directly."
-                    className={`${fieldSurfaceClass} rounded-[1.5rem]`}
+                    className={`${textareaFieldSurfaceClass} rounded-[1.5rem]`}
                   />
+                  <p id="escalationMessage-help" className="mt-2 text-sm text-muted-foreground">
+                    Used when a review needs direct offline follow-up.
+                  </p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-3">
                   <div>
@@ -651,30 +667,42 @@ export function SetupWizardClient({
                     <Input
                       id="allowedPromises"
                       name="allowedPromises"
+                      aria-describedby="allowedPromises-help"
                       defaultValue={settingsData.allowedPromises.join(', ')}
-                      placeholder="follow_up_call, service_check"
+                      placeholder="follow-up call, service check"
                       className={fieldSurfaceClass}
                     />
+                    <p id="allowedPromises-help" className="mt-2 text-sm text-muted-foreground">
+                      Comma-separated actions the assistant can offer.
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="bannedPhrases">Banned phrases</Label>
                     <Input
                       id="bannedPhrases"
                       name="bannedPhrases"
+                      aria-describedby="bannedPhrases-help"
                       defaultValue={settingsData.bannedPhrases.join(', ')}
                       placeholder="we admit fault, guaranteed refund"
                       className={fieldSurfaceClass}
                     />
+                    <p id="bannedPhrases-help" className="mt-2 text-sm text-muted-foreground">
+                      Comma-separated phrases the assistant must avoid.
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="notificationEmails">Notification emails</Label>
                     <Input
                       id="notificationEmails"
                       name="notificationEmails"
+                      aria-describedby="notificationEmails-help"
                       defaultValue={settingsData.notificationEmails.join(', ')}
-                      placeholder="owner@yourbusiness.com, manager@yourbusiness.com"
+                      placeholder="owner@business.com, manager@business.com"
                       className={fieldSurfaceClass}
                     />
+                    <p id="notificationEmails-help" className="mt-2 text-sm text-muted-foreground">
+                      Comma-separated emails for high-priority alerts.
+                    </p>
                   </div>
                 </div>
                 <div>
@@ -684,7 +712,7 @@ export function SetupWizardClient({
                     name="manualReviewRules"
                     aria-describedby="manualReviewRules-help"
                     defaultValue={settingsData.manualReviewRules.join(', ')}
-                    placeholder="negative_reviews, billing_dispute, legal_threat"
+                    placeholder="negative review, billing dispute, legal threat"
                     className={fieldSurfaceClass}
                   />
                   <p id="manualReviewRules-help" className="mt-2 text-sm text-muted-foreground">
