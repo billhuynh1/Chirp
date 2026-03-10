@@ -1,4 +1,15 @@
 import { Badge } from '@/components/ui/badge';
+import { Star } from 'lucide-react';
+
+export function RatingBadge({ rating }: { rating: number }) {
+  return (
+    <Badge variant="neutral" className="gap-1.5">
+      <Star className="size-3.5 fill-current text-yellow-500 dark:text-yellow-400" aria-hidden="true" />
+      <span aria-hidden="true" className="text-foreground tabular-nums">{rating}</span>
+      <span className="sr-only">{rating} stars</span>
+    </Badge>
+  );
+}
 
 export function ReviewStatusBadge({ status }: { status: string }) {
   const variant =

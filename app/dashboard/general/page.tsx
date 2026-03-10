@@ -80,7 +80,7 @@ export default function GeneralPage() {
 
   return (
     <section className="flex-1 p-4 lg:p-8">
-      <h1 className="text-lg lg:text-2xl font-medium text-gray-900 mb-6">
+      <h1 className="text-foreground mb-6 text-lg font-medium lg:text-2xl">
         General Settings
       </h1>
 
@@ -94,10 +94,10 @@ export default function GeneralPage() {
               <AccountFormWithData state={state} />
             </Suspense>
             {state.error && (
-              <p className="text-red-500 text-sm">{state.error}</p>
+              <p className="text-danger text-sm">{state.error}</p>
             )}
             {state.success && (
-              <p className="text-green-500 text-sm">{state.success}</p>
+              <p className="text-success text-sm">{state.success}</p>
             )}
             <Button
               type="submit"

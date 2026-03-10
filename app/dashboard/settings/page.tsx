@@ -25,17 +25,17 @@ export default async function SettingsPage() {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-[2rem] border border-black/10 bg-white/85 p-6 dark:border-white/10 dark:bg-[#111b1d]/90">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9b4629]">
+      <div className="rounded-[2rem] border border-border/70 bg-card/90 p-6">
+        <p className="text-warning text-xs font-semibold uppercase tracking-[0.24em]">
           Settings
         </p>
-        <h1 className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">
+        <h1 className="text-foreground mt-3 text-3xl font-semibold">
           Business voice and safety rules
         </h1>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <Card className="bg-white/85 dark:bg-[#111b1d]/90">
+        <Card className="bg-card/90">
           <CardHeader>
             <CardTitle>Business profile</CardTitle>
           </CardHeader>
@@ -65,14 +65,14 @@ export default async function SettingsPage() {
                 <Label htmlFor="reviewContactEmail">Review contact email</Label>
                 <Input id="reviewContactEmail" name="reviewContactEmail" type="email" defaultValue={workspace.business.reviewContactEmail ?? workspace.user.email} className="mt-2 rounded-2xl" />
               </div>
-              <Button className="rounded-full bg-[#c85c36] text-white hover:bg-[#b64a25]">
+              <Button className="rounded-full">
                 Save profile
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        <Card className="bg-white/85 dark:bg-[#111b1d]/90">
+        <Card className="bg-card/90">
           <CardHeader>
             <CardTitle>Draft rules</CardTitle>
           </CardHeader>
@@ -114,7 +114,7 @@ export default async function SettingsPage() {
                 <Label htmlFor="manualReviewRules">Manual review rules</Label>
                 <Input id="manualReviewRules" name="manualReviewRules" defaultValue={workspace.settings.manualReviewRules.join(', ')} className="mt-2 rounded-2xl" />
               </div>
-              <Button className="rounded-full bg-[#c85c36] text-white hover:bg-[#b64a25]">
+              <Button className="rounded-full">
                 Save settings
               </Button>
             </form>

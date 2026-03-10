@@ -151,19 +151,33 @@ export async function getDashboardSummary(businessId: number) {
     };
   }
 
-  const [counts] = await db
-    .select({
-      newReviews: sql<number>`count(*) filter (where ${reviews.workflowStatus} = 'new')`,
-      urgentReviews: sql<number>`count(*) filter (where ${reviews.priority} in ('high', 'critical'))`,
-      readyToPost: sql<number>`count(*) filter (where ${reviews.workflowStatus} in ('draft_ready', 'approved'))`,
-      postedThisWeek: sql<number>`count(*) filter (where ${reviews.workflowStatus} = 'posted_manual' and ${reviews.updatedAt} >= now() - interval '7 days')`
-    })
-    .from(reviews)
-    .where(inArray(reviews.locationId, locationIds));
+  const [[counts], [urgentCounts]] = await Promise.all([
+    db
+      .select({
+        newReviews: sql<number>`count(*) filter (where ${reviews.workflowStatus} = 'new')`,
+        readyToPost: sql<number>`count(*) filter (where ${reviews.workflowStatus} in ('draft_ready', 'approved'))`,
+        postedThisWeek: sql<number>`count(*) filter (where ${reviews.workflowStatus} = 'posted_manual' and ${reviews.updatedAt} >= now() - interval '7 days')`
+      })
+      .from(reviews)
+      .where(inArray(reviews.locationId, locationIds)),
+    db
+      .select({
+        urgentReviews: sql<number>`count(distinct ${reviews.id})`
+      })
+      .from(reviews)
+      .innerJoin(reviewAnalysis, eq(reviewAnalysis.reviewId, reviews.id))
+      .where(
+        and(
+          inArray(reviews.locationId, locationIds),
+          eq(reviewAnalysis.isActive, true),
+          inArray(reviewAnalysis.urgency, ['high', 'critical'])
+        )
+      )
+  ]);
 
   return {
     newReviews: Number(counts?.newReviews ?? 0),
-    urgentReviews: Number(counts?.urgentReviews ?? 0),
+    urgentReviews: Number(urgentCounts?.urgentReviews ?? 0),
     readyToPost: Number(counts?.readyToPost ?? 0),
     postedThisWeek: Number(counts?.postedThisWeek ?? 0),
     totalLocations: locationIds.length
@@ -222,6 +236,13 @@ async function maybeFilterByUrgency(rows: Review[], urgency?: string) {
   }
 
   const analyses = await getLatestAnalyses(rows.map((row) => row.id));
+  if (urgency === 'urgent') {
+    return rows.filter((row) => {
+      const analysisUrgency = analyses.get(row.id)?.urgency;
+      return analysisUrgency === 'high' || analysisUrgency === 'critical';
+    });
+  }
+
   return rows.filter((row) => analyses.get(row.id)?.urgency === urgency);
 }
 

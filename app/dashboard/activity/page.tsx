@@ -73,10 +73,10 @@ export default async function ActivityPage() {
 
   return (
     <section className="flex-1 p-4 lg:p-8">
-      <h1 className="mb-6 text-lg font-medium text-gray-900 dark:text-white lg:text-2xl">
+      <h1 className="text-foreground mb-6 text-lg font-medium lg:text-2xl">
         Activity Log
       </h1>
-      <Card className="dark:bg-[#111b1d]/90">
+      <Card className="bg-card/90">
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>
@@ -95,11 +95,11 @@ export default async function ActivityPage() {
                       <Icon className="h-5 w-5 text-secondary" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      <p className="text-foreground text-sm font-medium">
                         {formattedAction}
                         {log.ipAddress && ` from IP ${log.ipAddress}`}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">
+                      <p className="text-muted-foreground text-xs">
                         {getRelativeTime(new Date(log.timestamp))}
                       </p>
                     </div>
@@ -110,10 +110,10 @@ export default async function ActivityPage() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <AlertCircle className="mb-4 h-12 w-12 text-secondary" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-foreground mb-2 text-lg font-semibold">
                 No activity yet
               </h3>
-              <p className="max-w-sm text-sm text-gray-500 dark:text-slate-400">
+              <p className="text-muted-foreground max-w-sm text-sm">
                 When you perform actions like signing in or updating your
                 account, they'll appear here.
               </p>

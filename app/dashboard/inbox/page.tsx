@@ -1,13 +1,12 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Search } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getCurrentWorkspace } from '@/lib/db/queries';
 import { listBusinessReviews } from '@/lib/services/reviews';
-import { ReviewStatusBadge, UrgencyBadge } from '@/components/reviews/review-badges';
+import { RatingBadge, ReviewStatusBadge, UrgencyBadge } from '@/components/reviews/review-badges';
 
 export default async function InboxPage({
   searchParams
@@ -29,28 +28,28 @@ export default async function InboxPage({
   });
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-[2rem] border border-black/10 bg-white/85 p-6 dark:border-white/10 dark:bg-[#111b1d]/90">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9b4629]">
+    <section className="space-y-8">
+      <div className="rounded-[2rem] bg-card p-6 shadow-sm">
+        <p className="text-muted-foreground text-xs font-medium">
           Review inbox
         </p>
-        <h1 className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">
+        <h1 className="text-foreground mt-3 text-3xl font-semibold">
           Triage incoming Google reviews
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+        <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-7">
           Filter by urgency, rating, and workflow status to get from imported
           review to approved reply quickly.
         </p>
       </div>
 
-      <Card className="bg-white/85 dark:bg-[#111b1d]/90">
+      <Card className="bg-card shadow-sm">
         <CardHeader>
           <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4 md:grid-cols-[1.3fr_0.7fr_0.7fr_0.7fr_auto]">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+              <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
               <Input
                 name="search"
                 defaultValue={typeof params.search === 'string' ? params.search : ''}
@@ -76,21 +75,21 @@ export default async function InboxPage({
               placeholder="rating"
               className="rounded-2xl"
             />
-            <Button className="rounded-full bg-[#c85c36] text-white hover:bg-[#b64a25]">
+            <Button className="rounded-full">
               Apply
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      <Card className="bg-white/85 dark:bg-[#111b1d]/90">
+      <Card className="bg-card shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Reviews</CardTitle>
-          <Badge variant="neutral">{reviews.length} total</Badge>
+          <p className="text-muted-foreground text-sm">{reviews.length} total</p>
         </CardHeader>
         <CardContent className="space-y-4">
           {reviews.length === 0 ? (
-            <div className="rounded-[1.5rem] border border-dashed border-black/10 bg-[#fbf8f2] px-5 py-10 text-sm text-slate-600 dark:border-white/10 dark:bg-[#182527] dark:text-slate-300">
+            <div className="text-muted-foreground rounded-[1.5rem] bg-muted/30 px-5 py-10 text-sm">
               No reviews match the current filters.
             </div>
           ) : (
@@ -98,35 +97,33 @@ export default async function InboxPage({
               <Link
                 key={review.id}
                 href={`/dashboard/reviews/${review.id}`}
-                className="grid gap-4 rounded-[1.5rem] border border-black/10 bg-[#fbf8f2] p-5 transition hover:border-[#c85c36]/40 hover:bg-white dark:border-white/10 dark:bg-[#182527] dark:hover:border-[#77d970]/35 dark:hover:bg-[#152123] lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr]"
+                className="grid gap-4 rounded-[1.5rem] border border-border/70 bg-muted/30 p-5 transition hover:-translate-y-px hover:bg-muted/45 lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr]"
               >
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={review.starRating <= 2 ? 'danger' : review.starRating === 3 ? 'warning' : 'success'}>
-                      {review.starRating} stars
-                    </Badge>
+                    <RatingBadge rating={review.starRating} />
                     <ReviewStatusBadge status={review.workflowStatus} />
                     <UrgencyBadge urgency={review.latestAnalysis?.urgency ?? review.priority} />
                   </div>
-                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                  <p className="text-foreground/90 mt-3 line-clamp-3 text-sm leading-6">
                     {review.reviewText || 'Rating-only review'}
                   </p>
-                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  <p className="text-muted-foreground mt-3 text-xs uppercase tracking-[0.18em]">
                     {review.reviewerName || 'Anonymous'} • {review.location.name}
                   </p>
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-300">
-                  <div className="font-medium text-slate-950 dark:text-white">Summary</div>
+                <div className="text-muted-foreground text-sm">
+                  <div className="text-foreground font-medium">Summary</div>
                   <p className="mt-2 line-clamp-3">{review.latestAnalysis?.summary || 'Pending analysis'}</p>
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-300">
-                  <div className="font-medium text-slate-950 dark:text-white">Tags</div>
+                <div className="text-muted-foreground text-sm">
+                  <div className="text-foreground font-medium">Tags</div>
                   <p className="mt-2 line-clamp-3">
                     {review.latestAnalysis?.issueTags?.join(', ') || 'No tags yet'}
                   </p>
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-300">
-                  <div className="font-medium text-slate-950 dark:text-white">Draft</div>
+                <div className="text-muted-foreground text-sm">
+                  <div className="text-foreground font-medium">Draft</div>
                   <p className="mt-2 line-clamp-3">
                     {review.latestDraft?.draftText || 'No draft yet'}
                   </p>

@@ -39,7 +39,7 @@ type SetupBusinessProfileFormProps = {
 };
 
 const fieldSurfaceClass =
-  'mt-2 rounded-2xl border-0 bg-muted/70 shadow-none placeholder:text-muted-foreground/80 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/60';
+  'mt-2 rounded-2xl border border-border/70 bg-muted/70 shadow-none placeholder:text-muted-foreground/80 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/60';
 
 function readField(formData: FormData, field: FieldName) {
   return String(formData.get(field) ?? '').trim();
@@ -353,7 +353,7 @@ export function SetupBusinessProfileForm({
               Saving...
             </>
           ) : (
-            'Save business profile'
+            'Save'
           )}
         </Button>
       </fieldset>

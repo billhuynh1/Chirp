@@ -76,7 +76,7 @@ type SetupWizardClientProps = {
 type StepKey = 'business' | 'google' | 'drafting';
 
 const fieldSurfaceClass =
-  'mt-2 rounded-2xl border-0 bg-muted/70 text-foreground shadow-none placeholder:text-muted-foreground/80 placeholder:opacity-100 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/60';
+  'mt-2 rounded-2xl border border-border/70 bg-muted/70 text-foreground shadow-none placeholder:text-muted-foreground/80 placeholder:opacity-100 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/60';
 const textareaFieldSurfaceClass = `${fieldSurfaceClass} px-4 py-2.5`;
 
 function getStepComplete(status: SetupStatus, stepId: string) {
@@ -396,7 +396,7 @@ export function SetupWizardClient({
           </CardHeader>
           <CardContent>
             {businessComplete && !expandedSteps.business ? (
-              <div className="rounded-[1.5rem] bg-muted p-4">
+              <div className="rounded-[1.5rem] border border-border/70 bg-muted p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -445,7 +445,7 @@ export function SetupWizardClient({
           </CardHeader>
           <CardContent className="space-y-4">
             {googleComplete && !expandedSteps.google ? (
-              <div className="rounded-[1.5rem] bg-muted p-4">
+              <div className="rounded-[1.5rem] border border-border/70 bg-muted p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -479,7 +479,7 @@ export function SetupWizardClient({
                     {googleServerError}
                   </div>
                 ) : null}
-                <div className="rounded-[1.5rem] bg-muted p-4">
+                <div className="rounded-[1.5rem] border border-border/70 bg-muted p-4">
                   <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                     <Link2 className="size-4 text-primary" />
                     Connection status
@@ -513,7 +513,7 @@ export function SetupWizardClient({
                             {selectableLocations.map((location) => (
                               <label
                                 key={location.externalLocationId}
-                                className="flex items-start gap-3 rounded-[1.5rem] bg-muted p-4"
+                                className="flex items-start gap-3 rounded-[1.5rem] border border-border/70 bg-muted p-4"
                               >
                                 <input
                                   type="checkbox"
@@ -568,7 +568,7 @@ export function SetupWizardClient({
         </CardHeader>
         <CardContent>
           {draftingComplete && !expandedSteps.drafting ? (
-            <div className="rounded-[1.5rem] bg-muted p-4">
+            <div className="rounded-[1.5rem] border border-border/70 bg-muted p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -726,7 +726,7 @@ export function SetupWizardClient({
                       Saving...
                     </>
                   ) : (
-                    'Save safety settings'
+                    'Save'
                   )}
                 </Button>
               </fieldset>

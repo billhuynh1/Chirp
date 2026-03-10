@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation';
 import { AlertTriangle, ArrowRight, CheckCircle2, Inbox, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { getCurrentWorkspace } from '@/lib/db/queries';
 import {
   getDashboardSummary,
@@ -11,7 +10,7 @@ import {
   listBusinessReviews
 } from '@/lib/services/reviews';
 import { syncNowAction } from './actions';
-import { ReviewStatusBadge, UrgencyBadge } from '@/components/reviews/review-badges';
+import { RatingBadge, ReviewStatusBadge, UrgencyBadge } from '@/components/reviews/review-badges';
 
 export default async function DashboardPage() {
   const workspace = await getCurrentWorkspace();
@@ -34,18 +33,19 @@ export default async function DashboardPage() {
       review.latestAnalysis?.urgency === 'high' ||
       review.latestAnalysis?.urgency === 'critical'
   );
+  const compactStatusSet = new Set(['approved', 'draft_ready', 'posted_manual', 'rejected']);
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-[2rem] border border-black/10 bg-[linear-gradient(135deg,#1f2a2a_0%,#314245_100%)] p-6 text-white shadow-sm dark:border-white/10 dark:bg-[linear-gradient(135deg,#123325_0%,#1e4734_100%)] lg:flex-row lg:items-end lg:justify-between">
+    <section className="space-y-8">
+      <div className="flex flex-col gap-4 rounded-[2rem] bg-card p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#efb49f]">
+          <p className="text-muted-foreground text-xs font-medium">
             Overview
           </p>
           <h1 className="mt-3 text-3xl font-semibold">
             Review operations for {workspace.business.name}
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+          <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-7">
             Track new reviews, surface urgent negatives, and keep approved
             replies moving through a manual-post workflow.
           </p>
@@ -57,13 +57,13 @@ export default async function DashboardPage() {
               name="connectedAccountId"
               value={workspace.connectedAccount.id}
             />
-            <Button className="rounded-full bg-[#c85c36] text-white hover:bg-[#b64a25]">
+            <Button className="rounded-full">
               <RefreshCcw className="size-4" />
               Sync now
             </Button>
           </form>
         ) : (
-          <Button asChild className="rounded-full bg-[#c85c36] text-white hover:bg-[#b64a25]">
+          <Button asChild className="rounded-full">
             <Link href="/dashboard/setup">Finish setup</Link>
           </Button>
         )}
@@ -78,18 +78,18 @@ export default async function DashboardPage() {
         ].map((item) => (
           <Card
             key={item.label}
-            className="bg-white/85 dark:bg-[#111b1d]/90"
+            className="bg-card shadow-sm"
           >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                <CardTitle className="text-muted-foreground text-sm font-medium">
                   {item.label}
                 </CardTitle>
-                <item.icon className="size-4 text-[#c85c36]" />
+                <item.icon className="text-muted-foreground size-4" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-semibold text-slate-950 dark:text-white">
+              <div className="text-foreground text-3xl font-semibold">
                 {item.value}
               </div>
             </CardContent>
@@ -98,16 +98,16 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
-        <Card className="bg-white/85 dark:bg-[#111b1d]/90">
+        <Card className="bg-card shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Urgent reviews</CardTitle>
-            <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link href="/dashboard/inbox?urgency=high">Open inbox</Link>
+            <Button asChild variant="ghost" size="sm" className="rounded-full">
+              <Link href="/dashboard/inbox?urgency=urgent">Open inbox</Link>
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {urgentReviews.length === 0 ? (
-              <div className="rounded-[1.5rem] border border-dashed border-black/10 bg-[#fbf8f2] px-5 py-8 text-sm text-slate-600 dark:border-white/10 dark:bg-[#182527] dark:text-slate-300">
+              <div className="text-muted-foreground rounded-[1.5rem] border border-dashed border-border/70 bg-muted/30 px-5 py-8 text-sm">
                 No urgent reviews right now.
               </div>
             ) : (
@@ -115,17 +115,19 @@ export default async function DashboardPage() {
                 <Link
                   key={review.id}
                   href={`/dashboard/reviews/${review.id}`}
-                  className="block rounded-[1.5rem] border border-black/10 bg-[#fbf8f2] p-4 transition hover:border-[#c85c36]/40 hover:bg-white dark:border-white/10 dark:bg-[#182527] dark:hover:border-[#77d970]/35 dark:hover:bg-[#152123]"
+                  className="block rounded-[1.5rem] border border-border/70 bg-muted/30 p-4 transition hover:-translate-y-px hover:bg-muted/45"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="danger">{review.starRating} stars</Badge>
+                    <RatingBadge rating={review.starRating} />
                     <UrgencyBadge urgency={review.latestAnalysis?.urgency} />
-                    <ReviewStatusBadge status={review.workflowStatus} />
+                    {compactStatusSet.has(review.workflowStatus) ? (
+                      <ReviewStatusBadge status={review.workflowStatus} />
+                    ) : null}
                   </div>
-                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                  <p className="text-foreground/90 mt-3 line-clamp-2 text-sm leading-6">
                     {review.reviewText || 'Rating-only review'}
                   </p>
-                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  <p className="text-muted-foreground mt-3 text-xs uppercase tracking-[0.18em]">
                     {review.location.name}
                   </p>
                 </Link>
@@ -134,26 +136,26 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/85 dark:bg-[#111b1d]/90">
+        <Card className="bg-card shadow-sm">
           <CardHeader>
             <CardTitle>MVP analytics</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5 text-sm">
-            <div className="rounded-[1.5rem] border border-black/10 bg-[#fbf8f2] p-4 dark:border-white/10 dark:bg-[#182527]">
-              <p className="text-slate-500 dark:text-slate-400">Imported reviews</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+          <CardContent className="space-y-4 text-sm">
+            <div className="rounded-[1.5rem] border border-border/70 bg-muted/30 p-4 transition hover:bg-muted/45">
+              <p className="text-muted-foreground">Imported reviews</p>
+              <p className="text-foreground mt-1 text-2xl font-semibold">
                 {analytics.importedReviews}
               </p>
             </div>
-            <div className="rounded-[1.5rem] border border-black/10 bg-[#fbf8f2] p-4 dark:border-white/10 dark:bg-[#182527]">
-              <p className="text-slate-500 dark:text-slate-400">Generated drafts</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+            <div className="rounded-[1.5rem] border border-border/70 bg-muted/30 p-4 transition hover:bg-muted/45">
+              <p className="text-muted-foreground">Generated drafts</p>
+              <p className="text-foreground mt-1 text-2xl font-semibold">
                 {analytics.generatedDrafts}
               </p>
             </div>
-            <div className="rounded-[1.5rem] border border-black/10 bg-[#fbf8f2] p-4 dark:border-white/10 dark:bg-[#182527]">
-              <p className="text-slate-500 dark:text-slate-400">Posted manually</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+            <div className="rounded-[1.5rem] border border-border/70 bg-muted/30 p-4 transition hover:bg-muted/45">
+              <p className="text-muted-foreground">Posted manually</p>
+              <p className="text-foreground mt-1 text-2xl font-semibold">
                 {analytics.postedReviews}
               </p>
             </div>
