@@ -198,6 +198,15 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
     return 'text-foreground';
   }
 
+  function scrollToReplyDraft() {
+    const composer = document.getElementById('reply-draft-composer');
+    if (!composer) return;
+    composer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (composer instanceof HTMLTextAreaElement) {
+      composer.focus({ preventScroll: true });
+    }
+  }
+
   return (
     <div className="flex h-full flex-col lg:flex-row gap-6">
       {/* LEFT PANEL: LIST */}
@@ -282,7 +291,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
       </div>
 
       {/* RIGHT PANEL: DETAIL & ACTIONS */}
-      <div className="flex-1 overflow-y-auto bg-muted/90 rounded-[1.5rem] border-0 shadow-none custom-scrollbar relative">
+      <div className="flex-1 overflow-y-auto bg-muted/50 rounded-[1.5rem] border-0 shadow-none custom-scrollbar relative">
         {!selectedReview ? (
            <div className="flex flex-col items-center justify-center h-full text-muted-foreground w-full p-10">
                <div className="rounded-full bg-muted p-4 mb-4">
@@ -295,10 +304,17 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
           <div className="p-6 md:p-8 space-y-8 max-w-4xl mx-auto">
              {/* Review Header */}
              <div>
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                  <RatingBadge rating={selectedReview.rating} />
-                  <ReviewStatusBadge status={selectedReview.status} />
-                  <UrgencyBadge urgency={selectedReview.urgency} />
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <RatingBadge rating={selectedReview.rating} />
+                    <ReviewStatusBadge status={selectedReview.status} />
+                    <UrgencyBadge urgency={selectedReview.urgency} />
+                  </div>
+                  {selectedReview.status !== 'completed' ? (
+                    <Button type="button" size="sm" className="rounded-full" onClick={scrollToReplyDraft}>
+                      Reply
+                    </Button>
+                  ) : null}
                 </div>
                 <h1 className="text-2xl font-semibold break-words">
                   {selectedReview.reviewerName} at {selectedReview.locationName}
@@ -383,6 +399,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
                    ) : (
                        <form onSubmit={handlePostReply} className="space-y-3">
                            <Textarea 
+                              id="reply-draft-composer"
                               name="postedText"
                               defaultValue={selectedReview.draftText}
                               className="min-h-[160px] rounded-[1.5rem] border-border/60 bg-card text-sm leading-relaxed dark:bg-background"

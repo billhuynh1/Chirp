@@ -2,18 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  BellRing,
-  Building2,
-  Inbox,
-  LayoutDashboard,
-  MapPinned,
-  Settings
-} from 'lucide-react';
+import { Building2, Inbox, LayoutDashboard, Settings } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -92,27 +84,6 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter>
-        <SidebarGroup>
-          <SidebarGroupLabel>Urgent alerting</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <div>
-              <BellRing size={16} />
-              <p>Email alerts are enabled for urgent negative reviews.</p>
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Google-first</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <div>
-              <MapPinned size={16} />
-              <p>V1 is optimized for Google Business Profile with manual posting after approval.</p>
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>
