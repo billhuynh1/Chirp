@@ -25,10 +25,29 @@ export default function RootLayout({
           {`
             (() => {
               const root = document.documentElement;
+              const THEME_STORAGE_KEY = 'chirp-theme';
               const media = window.matchMedia('(prefers-color-scheme: dark)');
-              const applyTheme = () => root.classList.toggle('dark', media.matches);
+              const getSavedTheme = () => {
+                try {
+                  return localStorage.getItem(THEME_STORAGE_KEY);
+                } catch {
+                  return null;
+                }
+              };
+              const applyTheme = () => {
+                const savedTheme = getSavedTheme();
+                const shouldUseDark =
+                  savedTheme === 'dark' ||
+                  (savedTheme !== 'light' && media.matches);
+                root.classList.toggle('dark', shouldUseDark);
+              };
               applyTheme();
-              media.addEventListener('change', applyTheme);
+              media.addEventListener('change', () => {
+                const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+                if (!savedTheme) {
+                  applyTheme();
+                }
+              });
             })();
           `}
         </Script>

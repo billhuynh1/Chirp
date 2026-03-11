@@ -1,7 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { User, LogOut, Settings } from 'lucide-react';
+import { LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,8 +16,40 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { signOut } from '@/app/(login)/actions';
 
+const THEME_STORAGE_KEY = 'chirp-theme';
+
+const setTheme = (theme: 'light' | 'dark') => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch (_error) {
+    // localStorage may be unavailable in strict privacy modes.
+  }
+};
+
+const getCurrentTheme = (): 'light' | 'dark' => {
+  if (typeof document === 'undefined') {
+    return 'light';
+  }
+  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+};
+
 export function UserNav({ email }: { email: string }) {
   const initials = email.substring(0, 2).toUpperCase();
+  const [theme, setThemeState] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    setThemeState(getCurrentTheme());
+  }, []);
+
+  const handleThemeToggle = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setThemeState(nextTheme);
+    setTheme(nextTheme);
+  };
 
   return (
     <DropdownMenu>
@@ -42,6 +75,14 @@ export function UserNav({ email }: { email: string }) {
               <Settings className="mr-2 size-4" />
               <span>Settings</span>
             </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleThemeToggle}>
+            {theme === 'dark' ? (
+              <Sun className="mr-2 size-4" />
+            ) : (
+              <Moon className="mr-2 size-4" />
+            )}
+            <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

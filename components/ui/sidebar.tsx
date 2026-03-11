@@ -200,7 +200,7 @@ function Sidebar({
         data-variant={variant}
         data-collapsible={collapsible}
         className={cn(
-          "absolute inset-y-0 flex h-full flex-col overflow-hidden border-sidebar-border bg-sidebar text-sidebar-foreground",
+          "sticky top-0 flex h-dvh flex-col overflow-hidden border-sidebar-border bg-sidebar text-sidebar-foreground",
           side === "left" ? "left-0 border-r" : "right-0 border-l",
           variant === "floating" && "m-3 rounded-2xl border shadow-sm",
           variant === "inset" &&

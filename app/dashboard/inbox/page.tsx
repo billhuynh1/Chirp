@@ -13,6 +13,8 @@ export default async function InboxPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const compactStatusSet = new Set(['approved', 'draft_ready', 'posted_manual', 'rejected']);
+
   const workspace = await getCurrentWorkspace();
   if (!workspace?.business) {
     redirect('/sign-in');
@@ -29,19 +31,6 @@ export default async function InboxPage({
 
   return (
     <section className="space-y-8">
-      <div className="rounded-[2rem] bg-card p-6 shadow-sm">
-        <p className="text-muted-foreground text-xs font-medium">
-          Review inbox
-        </p>
-        <h1 className="text-foreground mt-3 text-3xl font-semibold">
-          Triage incoming Google reviews
-        </h1>
-        <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-7">
-          Filter by urgency, rating, and workflow status to get from imported
-          review to approved reply quickly.
-        </p>
-      </div>
-
       <Card className="bg-card shadow-sm">
         <CardHeader>
           <CardTitle>Filters</CardTitle>
@@ -102,7 +91,9 @@ export default async function InboxPage({
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <RatingBadge rating={review.starRating} />
-                    <ReviewStatusBadge status={review.workflowStatus} />
+                    {compactStatusSet.has(review.workflowStatus) ? (
+                      <ReviewStatusBadge status={review.workflowStatus} />
+                    ) : null}
                     <UrgencyBadge urgency={review.latestAnalysis?.urgency ?? review.priority} />
                   </div>
                   <p className="text-foreground/90 mt-3 line-clamp-3 text-sm leading-6">
@@ -119,7 +110,11 @@ export default async function InboxPage({
                 <div className="text-muted-foreground text-sm">
                   <div className="text-foreground font-medium">Tags</div>
                   <p className="mt-2 line-clamp-3">
-                    {review.latestAnalysis?.issueTags?.join(', ') || 'No tags yet'}
+                    {review.latestAnalysis?.issueTags?.length
+                      ? review.latestAnalysis.issueTags
+                          .map((tag) => tag.replace(/_/g, ' '))
+                          .join(', ')
+                      : 'No tags yet'}
                   </p>
                 </div>
                 <div className="text-muted-foreground text-sm">
