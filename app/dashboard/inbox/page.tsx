@@ -1,12 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { getCurrentWorkspace } from '@/lib/db/queries';
-import { listBusinessReviews } from '@/lib/services/reviews';
+import { listBusinessLocations, listBusinessReviews } from '@/lib/services/reviews';
 import { RatingBadge, ReviewStatusBadge, UrgencyBadge } from '@/components/reviews/review-badges';
+import { InboxFilters } from './inbox-filters';
+import { parseInboxFilterState, toUrlSearchParams } from '@/lib/services/reviews/inbox-filters';
 
 export default async function InboxPage({
   searchParams
@@ -21,55 +20,24 @@ export default async function InboxPage({
   }
 
   const params = await searchParams;
-  const reviews = await listBusinessReviews(workspace.business.id, {
-    status: typeof params.status === 'string' ? params.status : undefined,
-    urgency: typeof params.urgency === 'string' ? params.urgency : undefined,
-    rating: typeof params.rating === 'string' ? Number(params.rating) : undefined,
-    locationId: typeof params.location === 'string' ? Number(params.location) : undefined,
-    search: typeof params.search === 'string' ? params.search : undefined
-  });
+  const filterState = parseInboxFilterState(params);
+  const currentQuery = toUrlSearchParams(params);
+  const [reviews, locationOptions] = await Promise.all([
+    listBusinessReviews(workspace.business.id, {
+      status: filterState.status,
+      statusGroup: filterState.statusGroup,
+      urgency: filterState.urgency,
+      rating: filterState.rating,
+      locationId: filterState.locationId,
+      search: filterState.search,
+      sort: filterState.sort
+    }),
+    listBusinessLocations(workspace.business.id)
+  ]);
 
   return (
     <section className="space-y-8">
-      <Card className="bg-card shadow-sm">
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4 md:grid-cols-[1.3fr_0.7fr_0.7fr_0.7fr_auto]">
-            <div className="relative">
-              <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
-              <Input
-                name="search"
-                defaultValue={typeof params.search === 'string' ? params.search : ''}
-                placeholder="Search review text or reviewer"
-                className="rounded-2xl pl-9"
-              />
-            </div>
-            <Input
-              name="status"
-              defaultValue={typeof params.status === 'string' ? params.status : ''}
-              placeholder="status"
-              className="rounded-2xl"
-            />
-            <Input
-              name="urgency"
-              defaultValue={typeof params.urgency === 'string' ? params.urgency : ''}
-              placeholder="urgency"
-              className="rounded-2xl"
-            />
-            <Input
-              name="rating"
-              defaultValue={typeof params.rating === 'string' ? params.rating : ''}
-              placeholder="rating"
-              className="rounded-2xl"
-            />
-            <Button className="rounded-full">
-              Apply
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <InboxFilters currentQuery={currentQuery} state={filterState} locations={locationOptions} />
 
       <Card className="bg-card shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
@@ -82,49 +50,52 @@ export default async function InboxPage({
               No reviews match the current filters.
             </div>
           ) : (
-            reviews.map((review) => (
-              <Link
-                key={review.id}
-                href={`/dashboard/reviews/${review.id}`}
-                className="grid gap-4 rounded-[1.5rem] border border-border/70 bg-muted/30 p-5 transition hover:-translate-y-px hover:bg-muted/45 lg:grid-cols-[1.4fr_0.6fr_0.6fr_0.6fr]"
-              >
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <RatingBadge rating={review.starRating} />
-                    {compactStatusSet.has(review.workflowStatus) ? (
-                      <ReviewStatusBadge status={review.workflowStatus} />
-                    ) : null}
-                    <UrgencyBadge urgency={review.latestAnalysis?.urgency ?? review.priority} />
+            reviews.map((review) => {
+              const customerMessage = (review.reviewText ?? '').trim() || 'Rating-only review';
+              const summary =
+                review.latestAnalysis?.issueTags?.length
+                  ? review.latestAnalysis.issueTags
+                      .filter((tag): tag is string => typeof tag === 'string')
+                      .map((tag) => tag.replace(/_/g, ' '))
+                      .join(', ')
+                  : 'No summary yet';
+
+              return (
+                <Link
+                  key={review.id}
+                  href={`/dashboard/reviews/${review.id}`}
+                  className="grid gap-4 rounded-[1.5rem] border border-border/70 bg-muted/30 p-5 transition hover:-translate-y-px hover:bg-muted/45 lg:grid-cols-[1.35fr_1fr_0.8fr]"
+                >
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <RatingBadge rating={review.starRating} />
+                      {compactStatusSet.has(review.workflowStatus) ? (
+                        <ReviewStatusBadge status={review.workflowStatus} />
+                      ) : null}
+                      <UrgencyBadge urgency={review.latestAnalysis?.urgency ?? review.priority} />
+                    </div>
+                    <p className="text-foreground/90 mt-2 line-clamp-2 text-sm leading-6">
+                      {customerMessage}
+                    </p>
+                    <p className="text-muted-foreground mt-2 text-xs uppercase tracking-[0.18em]">
+                      {review.reviewerName || 'Anonymous'} • {review.location.name}
+                    </p>
                   </div>
-                  <p className="text-foreground/90 mt-3 line-clamp-3 text-sm leading-6">
-                    {review.reviewText || 'Rating-only review'}
-                  </p>
-                  <p className="text-muted-foreground mt-3 text-xs uppercase tracking-[0.18em]">
-                    {review.reviewerName || 'Anonymous'} • {review.location.name}
-                  </p>
-                </div>
-                <div className="text-muted-foreground text-sm">
-                  <div className="text-foreground font-medium">Summary</div>
-                  <p className="mt-2 line-clamp-3">{review.latestAnalysis?.summary || 'Pending analysis'}</p>
-                </div>
-                <div className="text-muted-foreground text-sm">
-                  <div className="text-foreground font-medium">Tags</div>
-                  <p className="mt-2 line-clamp-3">
-                    {review.latestAnalysis?.issueTags?.length
-                      ? review.latestAnalysis.issueTags
-                          .map((tag) => tag.replace(/_/g, ' '))
-                          .join(', ')
-                      : 'No tags yet'}
-                  </p>
-                </div>
-                <div className="text-muted-foreground text-sm">
-                  <div className="text-foreground font-medium">Draft</div>
-                  <p className="mt-2 line-clamp-3">
-                    {review.latestDraft?.draftText || 'No draft yet'}
-                  </p>
-                </div>
-              </Link>
-            ))
+
+                  <div className="text-muted-foreground text-sm">
+                    <div className="text-foreground font-medium">Summary</div>
+                    <p className="mt-2 line-clamp-2">{summary}</p>
+                  </div>
+
+                  <div className="text-muted-foreground text-sm">
+                    <div className="text-foreground font-medium">Draft</div>
+                    <p className="mt-2 line-clamp-2">
+                      {review.latestDraft?.draftText || 'No draft yet'}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })
           )}
         </CardContent>
       </Card>

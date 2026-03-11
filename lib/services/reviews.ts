@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import {
   and,
+  asc,
   desc,
   eq,
   ilike,
@@ -31,15 +32,22 @@ import {
   analyzeReviewWithAI,
   generateReplyDraftWithAI
 } from '@/lib/services/ai';
+import {
+  resolveWorkflowStatusesForFilters,
+  type ReviewStatusGroup
+} from '@/lib/services/reviews/inbox-filters';
+import { sortReviewsForInbox, type ReviewSortMode } from '@/lib/services/reviews/inbox';
 import { queueJob } from '@/lib/services/job-queue';
 import { fetchReviewsForLocation } from '@/lib/services/integrations/google';
 
 export type ReviewFilters = {
   locationId?: number;
   status?: string;
+  statusGroup?: ReviewStatusGroup;
   rating?: number;
   urgency?: string;
   search?: string;
+  sort?: ReviewSortMode;
 };
 
 type ReviewWithContext = Review & {
@@ -47,6 +55,17 @@ type ReviewWithContext = Review & {
   latestAnalysis: ReviewAnalysis | null;
   latestDraft: ReplyDraft | null;
 };
+
+export async function listBusinessLocations(businessId: number) {
+  return db
+    .select({
+      id: locations.id,
+      name: locations.name
+    })
+    .from(locations)
+    .where(eq(locations.businessId, businessId))
+    .orderBy(asc(locations.name));
+}
 
 function hashPayload(payload: unknown) {
   return crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex');
@@ -203,8 +222,12 @@ export async function listBusinessReviews(
   if (filters.locationId) {
     predicates.push(eq(reviews.locationId, filters.locationId));
   }
-  if (filters.status) {
-    predicates.push(eq(reviews.workflowStatus, filters.status));
+  const workflowStatuses = resolveWorkflowStatusesForFilters({
+    statusGroup: filters.statusGroup,
+    status: filters.status
+  });
+  if (workflowStatuses?.length) {
+    predicates.push(inArray(reviews.workflowStatus, workflowStatuses));
   }
   if (filters.rating) {
     predicates.push(eq(reviews.starRating, filters.rating));
@@ -218,16 +241,20 @@ export async function listBusinessReviews(
     );
   }
 
+  const candidateLimit = filters.sort === 'newest' ? 100 : 500;
+
   let rows = await db
     .select()
     .from(reviews)
     .where(and(...predicates))
     .orderBy(desc(reviews.reviewCreatedAt))
-    .limit(100);
+    .limit(candidateLimit);
 
   rows = await maybeFilterByUrgency(rows, filters.urgency);
 
-  return buildReviewRecords(rows);
+  const records = await buildReviewRecords(rows);
+  const sorted = sortReviewsForInbox(records, filters.sort ?? 'urgency_then_newest');
+  return sorted.slice(0, 100);
 }
 
 async function maybeFilterByUrgency(rows: Review[], urgency?: string) {

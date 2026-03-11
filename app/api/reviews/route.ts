@@ -1,5 +1,6 @@
 import { getCurrentWorkspace } from '@/lib/db/queries';
 import { listBusinessReviews } from '@/lib/services/reviews';
+import { parseInboxFilterState } from '@/lib/services/reviews/inbox-filters';
 
 export async function GET(request: Request) {
   const workspace = await getCurrentWorkspace();
@@ -8,18 +9,17 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
+  const state = parseInboxFilterState(Object.fromEntries(url.searchParams.entries()));
+
   const reviews = await listBusinessReviews(workspace.business.id, {
-    locationId: url.searchParams.get('location')
-      ? Number(url.searchParams.get('location'))
-      : undefined,
-    status: url.searchParams.get('status') || undefined,
-    rating: url.searchParams.get('rating')
-      ? Number(url.searchParams.get('rating'))
-      : undefined,
-    urgency: url.searchParams.get('urgency') || undefined,
-    search: url.searchParams.get('search') || undefined
+    locationId: state.locationId,
+    status: state.status,
+    statusGroup: state.statusGroup,
+    rating: state.rating,
+    urgency: state.urgency,
+    search: state.search,
+    sort: state.sort
   });
 
   return Response.json({ reviews });
 }
-

@@ -2,10 +2,27 @@ import { Badge } from '@/components/ui/badge';
 import { Star } from 'lucide-react';
 
 export function RatingBadge({ rating }: { rating: number }) {
+  const boundedRating = Math.max(0, Math.min(5, Math.round(rating)));
+
   return (
-    <Badge variant="neutral" className="gap-1.5">
-      <Star className="size-3.5 fill-current text-yellow-500 dark:text-yellow-400" aria-hidden="true" />
-      <span aria-hidden="true" className="text-foreground tabular-nums">{rating}</span>
+    <Badge variant="neutral" className="gap-2">
+      <span aria-hidden="true" className="text-foreground tabular-nums">{boundedRating}</span>
+      <span className="flex items-center gap-0.5" aria-hidden="true">
+        {Array.from({ length: 5 }).map((_, index) => {
+          const filled = index < boundedRating;
+
+          return (
+            <Star
+              key={index}
+              className={
+                filled
+                  ? 'size-3.5 fill-current text-yellow-500 dark:text-yellow-400'
+                  : 'size-3.5 text-muted-foreground/50'
+              }
+            />
+          );
+        })}
+      </span>
       <span className="sr-only">{rating} stars</span>
     </Badge>
   );
