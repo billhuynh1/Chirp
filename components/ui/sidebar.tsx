@@ -222,7 +222,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sidebar-inset"
-      className={cn("flex min-w-0 flex-1 flex-col", className)}
+      className={cn("flex min-w-0 flex-1 flex-col h-full overflow-y-auto", className)}
       {...props}
     />
   );

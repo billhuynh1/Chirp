@@ -1,104 +1,61 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCurrentWorkspace } from '@/lib/db/queries';
-import { listBusinessLocations, listBusinessReviews } from '@/lib/services/reviews';
-import { RatingBadge, ReviewStatusBadge, UrgencyBadge } from '@/components/reviews/review-badges';
-import { InboxFilters } from './inbox-filters';
-import { parseInboxFilterState, toUrlSearchParams } from '@/lib/services/reviews/inbox-filters';
+import { listBusinessReviews } from '@/lib/services/reviews';
+import { SplitPaneInbox, type MockReview } from './split-pane-inbox';
 
-export default async function InboxPage({
-  searchParams
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const compactStatusSet = new Set(['approved', 'draft_ready', 'posted_manual', 'rejected']);
+export const metadata = {
+  title: 'Inbox - Chirp',
+};
 
+export default async function InboxPage() {
   const workspace = await getCurrentWorkspace();
   if (!workspace?.business) {
     redirect('/sign-in');
   }
 
-  const params = await searchParams;
-  const filterState = parseInboxFilterState(params);
-  const currentQuery = toUrlSearchParams(params);
-  const [reviews, locationOptions] = await Promise.all([
-    listBusinessReviews(workspace.business.id, {
-      status: filterState.status,
-      statusGroup: filterState.statusGroup,
-      urgency: filterState.urgency,
-      rating: filterState.rating,
-      locationId: filterState.locationId,
-      search: filterState.search,
-      sort: filterState.sort
-    }),
-    listBusinessLocations(workspace.business.id)
-  ]);
+  // Fetch reviews directly from DB (which are mock data seeded by the app)
+  const dbReviews = await listBusinessReviews(workspace.business.id);
+
+  const mappedReviews: MockReview[] = dbReviews.map((r) => {
+    let status: 'needs_review'|'draft_ready'|'completed' = 'needs_review';
+    if (r.workflowStatus === 'draft_ready' || r.workflowStatus === 'approved') status = 'draft_ready';
+    if (r.workflowStatus === 'posted_manual' || r.workflowStatus === 'completed') status = 'completed';
+
+    let urgency: 'urgent'|'high'|'medium'|'low' = 'low';
+    const analysisUrgency = r.latestAnalysis?.urgency || r.priority;
+    if (['critical', 'urgent', 'high', 'medium', 'low'].includes(analysisUrgency ?? '')) {
+       urgency = (analysisUrgency === 'critical' ? 'urgent' : analysisUrgency) as any;
+    }
+
+    return {
+      id: String(r.id),
+      reviewerName: r.reviewerName || 'Anonymous',
+      rating: r.starRating,
+      text: r.reviewText || '',
+      locationName: r.location.name,
+      date: (r.reviewCreatedAt || new Date()).toString(),
+      status,
+      urgency,
+      analysis: {
+        summary: r.latestAnalysis?.summary || 'No analysis available.',
+        recommendation: r.latestAnalysis?.actionRecommendation || 'N/A',
+        sentiment: r.latestAnalysis?.sentiment || 'Neutral',
+        riskLevel: r.latestAnalysis?.riskLevel || 'Low',
+        tags: (r.latestAnalysis?.issueTags ?? []).map(String)
+      },
+      draftText: r.latestDraft?.draftText || '',
+      finalPostedText: r.ownerReplyText || undefined
+    };
+  });
 
   return (
-    <section className="space-y-8">
-      <InboxFilters currentQuery={currentQuery} state={filterState} locations={locationOptions} />
-
-      <Card className="bg-card shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Reviews</CardTitle>
-          <p className="text-muted-foreground text-sm">{reviews.length} total</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {reviews.length === 0 ? (
-            <div className="text-muted-foreground rounded-[1.5rem] bg-muted/30 px-5 py-10 text-sm">
-              No reviews match the current filters.
-            </div>
-          ) : (
-            reviews.map((review) => {
-              const customerMessage = (review.reviewText ?? '').trim() || 'Rating-only review';
-              const summary =
-                review.latestAnalysis?.issueTags?.length
-                  ? review.latestAnalysis.issueTags
-                      .filter((tag): tag is string => typeof tag === 'string')
-                      .map((tag) => tag.replace(/_/g, ' '))
-                      .join(', ')
-                  : 'No summary yet';
-
-              return (
-                <Link
-                  key={review.id}
-                  href={`/dashboard/reviews/${review.id}`}
-                  className="grid gap-4 rounded-[1.5rem] border border-border/70 bg-muted/30 p-5 transition hover:-translate-y-px hover:bg-muted/45 lg:grid-cols-[1.35fr_1fr_0.8fr]"
-                >
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <RatingBadge rating={review.starRating} />
-                      {compactStatusSet.has(review.workflowStatus) ? (
-                        <ReviewStatusBadge status={review.workflowStatus} />
-                      ) : null}
-                      <UrgencyBadge urgency={review.latestAnalysis?.urgency ?? review.priority} />
-                    </div>
-                    <p className="text-foreground/90 mt-2 line-clamp-2 text-sm leading-6">
-                      {customerMessage}
-                    </p>
-                    <p className="text-muted-foreground mt-2 text-xs uppercase tracking-[0.18em]">
-                      {review.reviewerName || 'Anonymous'} • {review.location.name}
-                    </p>
-                  </div>
-
-                  <div className="text-muted-foreground text-sm">
-                    <div className="text-foreground font-medium">Summary</div>
-                    <p className="mt-2 line-clamp-2">{summary}</p>
-                  </div>
-
-                  <div className="text-muted-foreground text-sm">
-                    <div className="text-foreground font-medium">Draft</div>
-                    <p className="mt-2 line-clamp-2">
-                      {review.latestDraft?.draftText || 'No draft yet'}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
+    <section className="flex flex-col h-[calc(100vh-8rem)] lg:h-[calc(100vh-10rem)] gap-2">
+      <div className="flex items-center justify-between shrink-0 mb-2">
+         <h1 className="text-2xl font-semibold tracking-tight">Reviews Inbox</h1>
+      </div>
+      <div className="flex-1 min-h-0">
+        <SplitPaneInbox initialReviews={mappedReviews} />
+      </div>
     </section>
   );
 }

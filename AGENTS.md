@@ -115,6 +115,7 @@ Prefer:
 - controlled inputs
 - event handlers
 - memoized computations only when there is measurable benefit
+- using primitive components from shadcn for consistent styling
 
 Do not use `useEffect` for:
 - syncing props into state unnecessarily

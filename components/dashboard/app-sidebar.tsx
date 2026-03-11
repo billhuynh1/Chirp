@@ -8,7 +8,7 @@ import {
   Inbox,
   LayoutDashboard,
   MapPinned,
-  Settings2
+  Settings
 } from 'lucide-react';
 import {
   Sidebar,
@@ -30,7 +30,7 @@ const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/setup', label: 'Setup', icon: Building2 },
   { href: '/dashboard/inbox', label: 'Inbox', icon: Inbox },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings2 }
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings }
 ];
 
 export function AppSidebar({
