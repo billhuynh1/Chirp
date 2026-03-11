@@ -14,7 +14,7 @@ export function WorkflowStep({
   description
 }: WorkflowStepProps) {
   return (
-    <div className="relative rounded-[1.75rem] border border-black/10 bg-white/80 p-6 dark:border-white/10 dark:bg-white/5">
+    <div className="relative rounded-[1.75rem] border border-border/70 bg-card/85 p-6 dark:border-white/10 dark:bg-white/5">
       <div className="flex items-center justify-between">
         <div className="flex size-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
           <Icon className="size-5" />

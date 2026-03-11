@@ -86,7 +86,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 pb-16 pt-14 sm:px-6 sm:pb-20 lg:px-8 lg:pb-24 lg:pt-20">
           <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(520px,0.98fr)]">
             <div>
-              <Badge className="rounded-full border-[#c85c36]/15 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8c4127] dark:border-[#f0b7a0]/20 dark:bg-white/5 dark:text-[#f7c8b6]">
+              <Badge className="text-primary rounded-full border-primary/20 bg-primary/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] dark:border-[#f0b7a0]/20 dark:bg-white/5 dark:text-[#f7c8b6]">
                 AI review operations for plumbers
               </Badge>
               <h1 className="mt-6 max-w-3xl text-5xl font-semibold tracking-tight text-slate-950 sm:text-6xl lg:text-[4.2rem] lg:leading-[1.02] dark:text-white">
@@ -111,7 +111,7 @@ export default function HomePage() {
                   asChild
                   size="lg"
                   variant="outline"
-                  className="rounded-full border-black/10 bg-white/75 px-6 shadow-none dark:border-white/10 dark:bg-white/5"
+                  className="rounded-full border-border/70 bg-card/80 px-6 shadow-none dark:border-white/10 dark:bg-white/5"
                 >
                   <Link href="/pricing">See pricing</Link>
                 </Button>
@@ -142,7 +142,7 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="mt-10 flex flex-wrap gap-3 border-t border-black/10 pt-8 dark:border-white/10">
+          <div className="mt-10 flex flex-wrap gap-3 border-t border-border/70 pt-8 dark:border-white/10">
             {trustPills.map((pill) => (
               <MetricPill key={pill} label={pill} />
             ))}
@@ -191,9 +191,9 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <Card className="rounded-[2rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(246,241,232,0.88))] shadow-none dark:bg-[linear-gradient(145deg,rgba(21,27,36,0.95),rgba(11,16,24,0.96))]">
+          <Card className="rounded-[2rem] bg-card/90 shadow-none dark:bg-[linear-gradient(145deg,rgba(21,27,36,0.95),rgba(11,16,24,0.96))]">
             <CardHeader className="space-y-4">
-              <Badge className="w-fit rounded-full border-[#c85c36]/15 bg-[#f5e5de] text-[#8c4127] dark:border-[#f0b7a0]/20 dark:bg-[#f0b7a0]/10 dark:text-[#f7c8b6]">
+              <Badge className="text-primary w-fit rounded-full border-primary/20 bg-primary/10 dark:border-[#f0b7a0]/20 dark:bg-[#f0b7a0]/10 dark:text-[#f7c8b6]">
                 Review inbox
               </Badge>
               <CardTitle className="text-3xl tracking-tight text-slate-950 dark:text-white">
@@ -209,7 +209,7 @@ export default function HomePage() {
                   Teams can move faster without losing track of what needs a human review.
                 </p>
               </div>
-              <div className="rounded-[1.6rem] border border-black/10 bg-white/85 p-5 dark:border-white/10 dark:bg-white/5">
+              <div className="rounded-[1.6rem] border border-border/70 bg-card/85 p-5 dark:border-white/10 dark:bg-white/5">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between rounded-2xl border border-rose-200/80 bg-rose-50/80 p-4 dark:border-rose-400/20 dark:bg-rose-500/10">
                     <div>
@@ -244,9 +244,9 @@ export default function HomePage() {
           </Card>
 
           <div className="grid gap-6">
-            <Card className="rounded-[2rem] bg-white/80 shadow-none dark:bg-white/5">
+            <Card className="rounded-[2rem] bg-card/85 shadow-none dark:bg-white/5">
               <CardHeader>
-                <div className="flex size-12 items-center justify-center rounded-2xl border border-black/10 bg-[#f7f2ea] text-[#8c4127] dark:border-white/10 dark:bg-white/5 dark:text-[#f7c8b6]">
+                <div className="text-primary flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 dark:border-white/10 dark:bg-white/5 dark:text-[#f7c8b6]">
                   <Sparkles className="size-5" />
                 </div>
                 <CardTitle className="pt-4 text-2xl text-slate-950 dark:text-white">
@@ -258,9 +258,9 @@ export default function HomePage() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-[2rem] bg-white/80 shadow-none dark:bg-white/5">
+            <Card className="rounded-[2rem] bg-card/85 shadow-none dark:bg-white/5">
               <CardHeader>
-                <div className="flex size-12 items-center justify-center rounded-2xl border border-black/10 bg-[#f7f2ea] text-[#8c4127] dark:border-white/10 dark:bg-white/5 dark:text-[#f7c8b6]">
+                <div className="text-primary flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 dark:border-white/10 dark:bg-white/5 dark:text-[#f7c8b6]">
                   <BellRing className="size-5" />
                 </div>
                 <CardTitle className="pt-4 text-2xl text-slate-950 dark:text-white">

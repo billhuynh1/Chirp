@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning className="h-[100dvh] overflow-hidden bg-background text-foreground antialiased">
+      <body suppressHydrationWarning className="min-h-[100dvh] overflow-x-hidden bg-background text-foreground antialiased">
         <Script id="theme-init" strategy="beforeInteractive">
           {`
             (() => {

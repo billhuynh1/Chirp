@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { AlertTriangle, ArrowRight, CheckCircle2, Inbox, RefreshCcw } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCurrentWorkspace } from '@/lib/db/queries';
@@ -9,7 +9,6 @@ import {
   getReviewAnalytics,
   listBusinessReviews
 } from '@/lib/services/reviews';
-import { syncNowAction } from './actions';
 import { RatingBadge, ReviewStatusBadge, UrgencyBadge } from '@/components/reviews/review-badges';
 
 export default async function DashboardPage() {
@@ -51,50 +50,14 @@ export default async function DashboardPage() {
           </p>
         </div>
         {workspace.connectedAccount ? (
-          <form action={syncNowAction}>
-            <input
-              type="hidden"
-              name="connectedAccountId"
-              value={workspace.connectedAccount.id}
-            />
-            <Button className="rounded-full">
-              <RefreshCcw className="size-4" />
-              Sync now
-            </Button>
-          </form>
+          <Button asChild variant="outline" className="rounded-full">
+            <Link href="/dashboard/setup">Manage Google Sync</Link>
+          </Button>
         ) : (
           <Button asChild className="rounded-full">
             <Link href="/dashboard/setup">Finish setup</Link>
           </Button>
         )}
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: 'New reviews', value: summary.newReviews, icon: Inbox },
-          { label: 'Urgent reviews', value: summary.urgentReviews, icon: AlertTriangle },
-          { label: 'Ready to post', value: summary.readyToPost, icon: CheckCircle2 },
-          { label: 'Posted this week', value: summary.postedThisWeek, icon: ArrowRight }
-        ].map((item) => (
-          <Card
-            key={item.label}
-            className="bg-card shadow-sm"
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-muted-foreground text-sm font-medium">
-                  {item.label}
-                </CardTitle>
-                <item.icon className="text-muted-foreground size-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-foreground text-3xl font-semibold">
-                {item.value}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
@@ -158,6 +121,52 @@ export default async function DashboardPage() {
               <p className="text-foreground mt-1 text-2xl font-semibold">
                 {analytics.postedReviews}
               </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="bg-card shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-sm">Review Queue</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-[1rem] border border-border/70 bg-muted/30 px-4 py-3">
+              <div>
+                <p className="text-muted-foreground text-sm">New reviews</p>
+                <p className="text-foreground mt-1 text-2xl font-semibold">{summary.newReviews}</p>
+              </div>
+              <Inbox className="text-muted-foreground size-4" />
+            </div>
+            <div className="flex items-center justify-between rounded-[1rem] border border-border/70 bg-muted/30 px-4 py-3">
+              <div>
+                <p className="text-muted-foreground text-sm">Urgent reviews</p>
+                <p className="text-foreground mt-1 text-2xl font-semibold">{summary.urgentReviews}</p>
+              </div>
+              <AlertTriangle className="text-muted-foreground size-4" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-sm">Reply Throughput</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-[1rem] border border-border/70 bg-muted/30 px-4 py-3">
+              <div>
+                <p className="text-muted-foreground text-sm">Ready to post</p>
+                <p className="text-foreground mt-1 text-2xl font-semibold">{summary.readyToPost}</p>
+              </div>
+              <CheckCircle2 className="text-muted-foreground size-4" />
+            </div>
+            <div className="flex items-center justify-between rounded-[1rem] border border-border/70 bg-muted/30 px-4 py-3">
+              <div>
+                <p className="text-muted-foreground text-sm">Posted this week</p>
+                <p className="text-foreground mt-1 text-2xl font-semibold">{summary.postedThisWeek}</p>
+              </div>
+              <ArrowRight className="text-muted-foreground size-4" />
             </div>
           </CardContent>
         </Card>

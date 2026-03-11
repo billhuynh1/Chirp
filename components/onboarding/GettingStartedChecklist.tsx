@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { PartyPopper, Rocket } from 'lucide-react';
+import { Rocket } from 'lucide-react';
 import type { OnboardingStatus } from '@/lib/services/businesses';
 import { OnboardingStepCard } from './OnboardingStepCard';
 import { cn } from '@/lib/utils';
@@ -52,9 +52,6 @@ export function GettingStartedChecklist({
       <div className="relative overflow-hidden rounded-[2rem] bg-card p-6 shadow-sm">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <PartyPopper className="size-6" />
-            </div>
             <div>
               <p className="text-lg font-semibold text-foreground">
                 🎉 Chirp is fully set up

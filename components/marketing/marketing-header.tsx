@@ -16,7 +16,7 @@ const navItems = [
 
 export function MarketingHeader({ isAuthenticated }: MarketingHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 border-b border-black/10 bg-[#f7f2ea]/85 backdrop-blur-xl dark:border-white/10 dark:bg-[#090d12]/80">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl dark:border-white/10 dark:bg-[#090d12]/80">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-4 sm:px-6 lg:px-8">
         <Link
           href="/"

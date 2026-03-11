@@ -189,6 +189,15 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
     return normalized.charAt(0).toUpperCase() + normalized.slice(1);
   }
 
+  function sentimentClass(sentiment?: string | null) {
+    const normalized = sentiment?.toLowerCase() ?? '';
+    if (normalized.includes('positive')) return 'text-success';
+    if (normalized.includes('negative')) return 'text-destructive';
+    if (normalized.includes('mixed')) return 'text-warning';
+    if (normalized.includes('neutral')) return 'text-muted-foreground';
+    return 'text-foreground';
+  }
+
   return (
     <div className="flex h-full flex-col lg:flex-row gap-6">
       {/* LEFT PANEL: LIST */}
@@ -235,7 +244,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
         </div>
 
         {/* List Content */}
-        <div className="flex-1 overflow-y-auto pr-2 space-y-3 pb-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-2 space-y-3 pb-8 custom-scrollbar">
           {filteredReviews.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground text-sm bg-muted/30 rounded-[1.5rem]">
               No reviews match your filters.
@@ -247,10 +256,10 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
                 <button
                   key={r.id}
                   onClick={() => setSelectedId(r.id)}
-                  className={`w-full text-left p-4 rounded-[1.5rem] transition-all duration-200 ${
+                  className={`w-full text-left p-4 rounded-[1.5rem] transition-all duration-200 border ${
                     isSelected 
-                      ? 'bg-primary/5 text-primary-foreground shadow-sm ring-1 ring-primary/20' 
-                      : 'border-0 bg-transparent hover:bg-muted/30'
+                      ? 'border-primary ring-1 ring-primary/50 bg-primary/5 shadow-sm' 
+                      : 'border-transparent bg-transparent hover:bg-muted/30'
                   }`}
                 >
                   <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -273,7 +282,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
       </div>
 
       {/* RIGHT PANEL: DETAIL & ACTIONS */}
-      <div className="flex-1 overflow-y-auto bg-muted/30 rounded-[1.5rem] border-0 shadow-none custom-scrollbar relative">
+      <div className="flex-1 overflow-y-auto bg-muted/90 rounded-[1.5rem] border-0 shadow-none custom-scrollbar relative">
         {!selectedReview ? (
            <div className="flex flex-col items-center justify-center h-full text-muted-foreground w-full p-10">
                <div className="rounded-full bg-muted p-4 mb-4">
@@ -294,14 +303,16 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
                 <h1 className="text-2xl font-semibold break-words">
                   {selectedReview.reviewerName} at {selectedReview.locationName}
                 </h1>
-                <p className="text-foreground mt-4 text-base leading-relaxed bg-muted/30 p-4 rounded-[1.25rem] border border-border/50">
-                  {selectedReview.text}
-                </p>
+                <Card className="mt-4 border-0 shadow-none bg-transparent">
+                  <CardContent className="p-0 text-base leading-relaxed text-foreground">
+                    {selectedReview.text}
+                  </CardContent>
+                </Card>
              </div>
 
              {/* AI Analysis Grid */}
              <div className="grid gap-4 md:grid-cols-2">
-                <Card className="rounded-[1.25rem] shadow-none border-0 bg-muted/30">
+                <Card className="rounded-[1.25rem] dark:bg-background">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2">
                       <Sparkles className="size-3.5" />
@@ -315,17 +326,21 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
                      </div>
                      <div>
                          <div className="text-xs text-muted-foreground font-medium mb-1">Recommended Action</div>
-                         <p className="text-sm text-primary font-medium">{selectedReview.analysis.recommendation}</p>
+                         <p className="text-sm text-primary font-medium">
+                           {humanizeToken(selectedReview.analysis.recommendation, 'No recommendation')}
+                         </p>
                      </div>
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-[1.25rem] shadow-none border-0 bg-muted/30">
+                <Card className="rounded-[1.25rem] dark:bg-background">
                   <CardContent className="p-6 space-y-5">
                      <div className="grid grid-cols-2 gap-4">
                          <div>
                              <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Sentiment</div>
-                             <p className="text-sm font-medium">{humanizeToken(selectedReview.analysis.sentiment)}</p>
+                             <p className={`text-sm font-medium ${sentimentClass(selectedReview.analysis.sentiment)}`}>
+                               {humanizeToken(selectedReview.analysis.sentiment)}
+                             </p>
                          </div>
                          <div>
                              <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Risk Profile</div>
@@ -351,14 +366,13 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
              <hr className="border-border/50" />
 
              {/* Reply Actions */}
-             <Card className="rounded-[1.25rem] shadow-none border-0 bg-transparent sm:bg-muted/20">
-                 <CardHeader className="px-0 sm:px-6 pb-4">
+             <Card className="rounded-[1.25rem] shadow-none border-0 bg-transparent gap-2 py-0">
+                 <CardHeader className="px-0 sm:px-6 pb-2">
                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <Sparkles className="size-5 text-primary" />
                       Reply Draft
                    </CardTitle>
                  </CardHeader>
-                 <CardContent className="px-0 sm:px-6 space-y-4">
+                 <CardContent className="px-0 sm:px-6 space-y-3">
                    {selectedReview.status === 'completed' && selectedReview.finalPostedText ? (
                       <div className="bg-success/10 border border-success/20 rounded-[1.5rem] p-5">
                          <div className="text-sm font-medium text-success mb-2 flex items-center gap-2">
@@ -367,13 +381,13 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
                          <p className="text-sm text-foreground/90 whitespace-pre-wrap">{selectedReview.finalPostedText}</p>
                       </div>
                    ) : (
-                       <form onSubmit={handlePostReply} className="space-y-4">
+                       <form onSubmit={handlePostReply} className="space-y-3">
                            <Textarea 
                               name="postedText"
                               defaultValue={selectedReview.draftText}
-                              className="min-h-[160px] rounded-[1.5rem] text-sm leading-relaxed"
+                              className="min-h-[160px] rounded-[1.5rem] border-border/60 bg-card text-sm leading-relaxed dark:bg-background"
                            />
-                           <div className="flex flex-wrap items-center gap-3 mt-4">
+                           <div className="flex flex-wrap items-center gap-3">
                               <Button 
                                  type="submit" 
                                  className="rounded-full shadow-sm"
@@ -403,6 +417,3 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
     </div>
   );
 }
-
-// Ensure lucide-react CheckCircle2 is imported up top with Sparkles!
-// Wait I forgot to import CheckCircle2, doing that in the component directly or I'll just add it to the import list.

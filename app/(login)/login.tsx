@@ -43,7 +43,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const googleAuthHref = `/api/auth/google/start?mode=${mode}`;
 
   return (
-    <div className="grid min-h-[100dvh] bg-[linear-gradient(180deg,#f8f3eb_0%,#f1eadf_100%)] lg:grid-cols-[1.05fr_0.95fr]">
+    <div className="grid min-h-[100dvh] bg-background lg:grid-cols-[1.05fr_0.95fr]">
       <div className="hidden border-r border-black/10 bg-[#1f2a2a] p-10 text-white lg:flex lg:flex-col lg:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.24em] text-[#efb49f]">
@@ -83,12 +83,12 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="rounded-[2rem] border border-black/10 bg-white/90 p-8 shadow-xl shadow-black/5">
+          <div className="rounded-[2rem] border border-border/70 bg-card/90 p-8 shadow-xl shadow-black/5">
             <div className="space-y-6">
               <Button
                 asChild
                 variant="outline"
-                className="h-11 w-full rounded-2xl border-black/10 bg-[#fbf9f4] text-slate-900 hover:bg-white"
+                className="h-11 w-full rounded-2xl border-border/70 bg-background text-slate-900 hover:bg-muted/40"
               >
                 <Link href={googleAuthHref}>
                   <GoogleIcon />
@@ -97,9 +97,9 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               </Button>
 
               <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.24em] text-slate-400">
-                <div className="h-px flex-1 bg-black/10" />
+                <div className="h-px flex-1 bg-border/70" />
                 <span>Or with email</span>
-                <div className="h-px flex-1 bg-black/10" />
+                <div className="h-px flex-1 bg-border/70" />
               </div>
 
               <form className="space-y-6" action={formAction}>
@@ -116,7 +116,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                       defaultValue={state.email}
                       required
                       maxLength={50}
-                      className="h-11 rounded-2xl border-black/10 bg-[#fbf9f4]"
+                      className="h-11 rounded-2xl border-border/70 bg-background"
                       placeholder="owner@yourbusiness.com"
                     />
                   </div>
@@ -137,7 +137,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                       required
                       minLength={8}
                       maxLength={100}
-                      className="h-11 rounded-2xl border-black/10 bg-[#fbf9f4]"
+                      className="h-11 rounded-2xl border-border/70 bg-background"
                       placeholder="Minimum 8 characters"
                     />
                   </div>
@@ -168,7 +168,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               </form>
             </div>
 
-            <div className="mt-6 border-t border-black/10 pt-6 text-center text-sm text-slate-600">
+            <div className="mt-6 border-t border-border/70 pt-6 text-center text-sm text-slate-600">
               {mode === 'signin'
                 ? 'New to Chirp?'
                 : 'Already have an account?'}{' '}
