@@ -26,7 +26,8 @@ export const REVIEW_WORKFLOW_STATUSES = [
   'needs_attention',
   'approved',
   'posted_manual',
-  'rejected'
+  'rejected',
+  'closed_no_reply'
 ] as const;
 
 export const NEGATIVE_RISK_KEYWORDS = [

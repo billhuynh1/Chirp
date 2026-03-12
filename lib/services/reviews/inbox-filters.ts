@@ -5,7 +5,8 @@ const REVIEW_WORKFLOW_STATUSES = [
   'needs_attention',
   'approved',
   'posted_manual',
-  'rejected'
+  'rejected',
+  'closed_no_reply'
 ] as const;
 
 const INBOX_URGENCY_FILTERS = ['urgent', 'critical', 'high', 'medium', 'low'] as const;
@@ -14,7 +15,7 @@ export const REVIEW_STATUS_GROUP_TO_STATUSES = {
   needs_review: ['new', 'analyzed', 'needs_attention', 'rejected'],
   draft_ready: ['draft_ready'],
   ready_to_post: ['approved'],
-  completed: ['posted_manual']
+  completed: ['posted_manual', 'closed_no_reply']
 } as const;
 
 export type ReviewWorkflowStatus = (typeof REVIEW_WORKFLOW_STATUSES)[number];

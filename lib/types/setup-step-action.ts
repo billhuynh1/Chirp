@@ -26,6 +26,8 @@ export type SetupStepSummary = {
   drafting?: {
     signoffName: string;
     defaultReplyStyle: string;
+    draftGenerationMode: string;
+    focusQueueEnabled?: boolean;
   };
 };
 

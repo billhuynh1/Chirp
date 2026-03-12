@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentWorkspace } from '@/lib/db/queries';
 import {
   saveBusinessProfileAction,
@@ -65,9 +65,13 @@ export default async function SettingsPage() {
                 <Label htmlFor="reviewContactEmail">Review contact email</Label>
                 <Input id="reviewContactEmail" name="reviewContactEmail" type="email" defaultValue={workspace.business.reviewContactEmail ?? workspace.user.email} className="mt-2 rounded-2xl" />
               </div>
-              <Button className="rounded-full">
+              <FormSubmitButton
+                className="rounded-full"
+                pendingText="Saving profile..."
+                successToastMessage="Business profile saved"
+              >
                 Save profile
-              </Button>
+              </FormSubmitButton>
             </form>
           </CardContent>
         </Card>
@@ -77,7 +81,11 @@ export default async function SettingsPage() {
             <CardTitle>Draft rules</CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={saveBusinessSettingsFormAction} className="space-y-4">
+            <form
+              key={`${workspace.settings.updatedAt.toISOString()}:${workspace.settings.draftGenerationMode}:${workspace.settings.focusQueueEnabled ? '1' : '0'}`}
+              action={saveBusinessSettingsFormAction}
+              className="space-y-4"
+            >
               <div>
                 <Label htmlFor="brandVoice">Brand voice</Label>
                 <Textarea id="brandVoice" name="brandVoice" defaultValue={workspace.settings.brandVoice} className="mt-2 rounded-[1.5rem]" />
@@ -95,6 +103,30 @@ export default async function SettingsPage() {
                   <Label htmlFor="defaultReplyStyle">Default reply style</Label>
                   <Input id="defaultReplyStyle" name="defaultReplyStyle" defaultValue={workspace.settings.defaultReplyStyle} className="mt-2 rounded-2xl" />
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="draftGenerationMode">Draft generation mode</Label>
+                <select
+                  id="draftGenerationMode"
+                  name="draftGenerationMode"
+                  defaultValue={workspace.settings.draftGenerationMode}
+                  className="mt-2 h-10 w-full rounded-2xl border border-input bg-background px-3 text-sm"
+                >
+                  <option value="hybrid_risk_gated">Hybrid risk-gated</option>
+                  <option value="manual_only">Manual only</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="focusQueueEnabled">Focus Queue beta</Label>
+                <select
+                  id="focusQueueEnabled"
+                  name="focusQueueEnabled"
+                  defaultValue={workspace.settings.focusQueueEnabled ? 'true' : 'false'}
+                  className="mt-2 h-10 w-full rounded-2xl border border-input bg-background px-3 text-sm"
+                >
+                  <option value="false">Disabled</option>
+                  <option value="true">Enabled</option>
+                </select>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
@@ -114,9 +146,13 @@ export default async function SettingsPage() {
                 <Label htmlFor="manualReviewRules">Manual review rules</Label>
                 <Input id="manualReviewRules" name="manualReviewRules" defaultValue={workspace.settings.manualReviewRules.join(', ')} className="mt-2 rounded-2xl" />
               </div>
-              <Button className="rounded-full">
+              <FormSubmitButton
+                className="rounded-full"
+                pendingText="Saving settings..."
+                successToastMessage="Draft rules saved"
+              >
                 Save settings
-              </Button>
+              </FormSubmitButton>
             </form>
           </CardContent>
         </Card>

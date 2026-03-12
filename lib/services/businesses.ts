@@ -60,6 +60,8 @@ export async function createDefaultBusiness({
     bannedPhrases: ['we guarantee a refund', 'we admit fault', 'this was our negligence'],
     notificationEmails: [ownerEmail],
     defaultReplyStyle: 'professional',
+    draftGenerationMode: 'hybrid_risk_gated',
+    focusQueueEnabled: false,
     language: 'en',
     manualReviewRules: ['negative_reviews', 'damage_claim', 'safety_concern']
   };
@@ -144,6 +146,8 @@ export async function updateBusinessSettings(
       | 'bannedPhrases'
       | 'notificationEmails'
       | 'defaultReplyStyle'
+      | 'draftGenerationMode'
+      | 'focusQueueEnabled'
       | 'language'
       | 'manualReviewRules'
     >
@@ -167,6 +171,8 @@ export async function updateBusinessSettings(
         bannedPhrases: data.bannedPhrases ?? [],
         notificationEmails: data.notificationEmails ?? [],
         defaultReplyStyle: data.defaultReplyStyle ?? 'professional',
+        draftGenerationMode: data.draftGenerationMode ?? 'hybrid_risk_gated',
+        focusQueueEnabled: data.focusQueueEnabled ?? false,
         language: data.language ?? 'en',
         manualReviewRules: data.manualReviewRules ?? []
       })

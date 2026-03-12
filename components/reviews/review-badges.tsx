@@ -30,7 +30,7 @@ export function RatingBadge({ rating }: { rating: number }) {
 
 export function ReviewStatusBadge({ status }: { status: string }) {
   const variant =
-    status === 'posted_manual'
+    status === 'posted_manual' || status === 'closed_no_reply'
       ? 'success'
       : status === 'needs_attention' || status === 'rejected'
       ? 'danger'

@@ -20,8 +20,14 @@ import {
 import { queueJob } from '@/lib/services/job-queue';
 import { processPendingJobs } from '@/lib/services/jobs';
 import {
+  isDraftGenerationConflictError
+} from '@/lib/services/reviews/draft-generation-policy';
+import {
   approveDraft,
+  acknowledgeNoReply,
+  escalateReview,
   generateDraftForReview,
+  getFocusQueueReview,
   markReviewPosted,
   rejectDraft
 } from '@/lib/services/reviews';
@@ -234,6 +240,14 @@ const businessSettingsSchema = z.object({
   signoffName: z.string().min(2).max(120),
   escalationMessage: z.string().min(10).max(500),
   defaultReplyStyle: z.string().min(2).max(50),
+  draftGenerationMode: z
+    .enum(['hybrid_risk_gated', 'manual_only'])
+    .optional()
+    .default('hybrid_risk_gated'),
+  focusQueueEnabled: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
   allowedPromises: z.string().optional(),
   bannedPhrases: z.string().optional(),
   notificationEmails: z.string().optional(),
@@ -266,6 +280,8 @@ export async function saveBusinessSettingsAction(
     signoffName: parsed.signoffName,
     escalationMessage: parsed.escalationMessage,
     defaultReplyStyle: parsed.defaultReplyStyle,
+    draftGenerationMode: parsed.draftGenerationMode,
+    focusQueueEnabled: parsed.focusQueueEnabled,
     allowedPromises: csvToArray(parsed.allowedPromises ?? null),
     bannedPhrases: csvToArray(parsed.bannedPhrases ?? null),
     notificationEmails: csvToArray(parsed.notificationEmails ?? null),
@@ -292,7 +308,9 @@ export async function saveBusinessSettingsAction(
       summary: {
         drafting: {
           signoffName: parsed.signoffName,
-          defaultReplyStyle: parsed.defaultReplyStyle
+          defaultReplyStyle: parsed.defaultReplyStyle,
+          draftGenerationMode: parsed.draftGenerationMode,
+          focusQueueEnabled: parsed.focusQueueEnabled ?? workspace.settings.focusQueueEnabled
         }
       }
     } satisfies SetupStepActionResult;
@@ -448,11 +466,20 @@ export async function completeSetupAction() {
 export async function regenerateDraftAction(formData: FormData) {
   const workspace = await requireWorkspace();
   const reviewId = Number(formData.get('reviewId'));
+  const generationReason = String(formData.get('generationReason') ?? 'regenerate');
   if (!reviewId) {
     throw new Error('Review ID is required');
   }
 
-  const draft = await generateDraftForReview(reviewId, 'regenerate');
+  let draft;
+  try {
+    draft = await generateDraftForReview(reviewId, generationReason);
+  } catch (error) {
+    if (isDraftGenerationConflictError(error)) {
+      redirect(`/dashboard/reviews/${reviewId}?draftError=${error.code}`);
+    }
+    throw error;
+  }
 
   await createAuditLog({
     teamId: workspace.team.id,
@@ -461,7 +488,7 @@ export async function regenerateDraftAction(formData: FormData) {
     entityType: 'reply_draft',
     entityId: draft.id,
     action: 'regenerate_draft',
-    metadata: { reviewId }
+    metadata: { reviewId, generationReason }
   });
 
   revalidatePath(`/dashboard/reviews/${reviewId}`);
@@ -547,4 +574,61 @@ export async function markPostedAction(formData: FormData) {
 
 export async function dismissOnboardingAction() {
   revalidatePath('/dashboard/setup');
+}
+
+export async function acknowledgeNoReplyAction(formData: FormData) {
+  const workspace = await requireWorkspace();
+  const reviewId = Number(formData.get('reviewId'));
+  if (!reviewId) {
+    throw new Error('Review ID is required');
+  }
+
+  const review = await acknowledgeNoReply({
+    businessId: workspace.business.id,
+    reviewId
+  });
+
+  await createAuditLog({
+    teamId: workspace.team.id,
+    businessId: workspace.business.id,
+    userId: workspace.user.id,
+    entityType: 'review',
+    entityId: review.id,
+    action: 'acknowledge_no_reply',
+    metadata: {}
+  });
+
+  revalidatePath('/dashboard/inbox');
+  revalidatePath(`/dashboard/reviews/${reviewId}`);
+}
+
+export async function escalateReviewAction(formData: FormData) {
+  const workspace = await requireWorkspace();
+  const reviewId = Number(formData.get('reviewId'));
+  if (!reviewId) {
+    throw new Error('Review ID is required');
+  }
+
+  const review = await escalateReview({
+    businessId: workspace.business.id,
+    reviewId
+  });
+
+  await createAuditLog({
+    teamId: workspace.team.id,
+    businessId: workspace.business.id,
+    userId: workspace.user.id,
+    entityType: 'review',
+    entityId: review.id,
+    action: 'escalate_review',
+    metadata: {}
+  });
+
+  revalidatePath('/dashboard/inbox');
+  revalidatePath(`/dashboard/reviews/${reviewId}`);
+}
+
+export async function getFocusQueueAction() {
+  const workspace = await requireWorkspace();
+  return getFocusQueueReview(workspace.business.id);
 }

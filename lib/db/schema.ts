@@ -152,6 +152,10 @@ export const businessSettings = pgTable(
     defaultReplyStyle: varchar('default_reply_style', { length: 50 })
       .notNull()
       .default('professional'),
+    draftGenerationMode: varchar('draft_generation_mode', { length: 40 })
+      .notNull()
+      .default('hybrid_risk_gated'),
+    focusQueueEnabled: boolean('focus_queue_enabled').notNull().default(false),
     language: varchar('language', { length: 20 }).notNull().default('en'),
     manualReviewRules: jsonb('manual_review_rules')
       .$type<JsonArray>()
@@ -262,6 +266,8 @@ export const reviews = pgTable(
     workflowStatus: varchar('workflow_status', { length: 40 }).notNull().default('new'),
     priority: varchar('priority', { length: 20 }).notNull().default('low'),
     needsAttention: boolean('needs_attention').notNull().default(false),
+    assignedUserId: integer('assigned_user_id').references(() => users.id),
+    escalatedAt: timestamp('escalated_at'),
     lastProcessedAt: timestamp('last_processed_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow()
@@ -535,6 +541,10 @@ export const reviewsRelations = relations(reviews, ({ one, many }) => ({
   location: one(locations, {
     fields: [reviews.locationId],
     references: [locations.id]
+  }),
+  assignedUser: one(users, {
+    fields: [reviews.assignedUserId],
+    references: [users.id]
   }),
   analyses: many(reviewAnalysis),
   drafts: many(replyDrafts),

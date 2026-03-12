@@ -32,7 +32,13 @@ export default async function DashboardPage() {
       review.latestAnalysis?.urgency === 'high' ||
       review.latestAnalysis?.urgency === 'critical'
   );
-  const compactStatusSet = new Set(['approved', 'draft_ready', 'posted_manual', 'rejected']);
+  const compactStatusSet = new Set([
+    'approved',
+    'draft_ready',
+    'posted_manual',
+    'rejected',
+    'closed_no_reply'
+  ]);
 
   return (
     <section className="space-y-8">

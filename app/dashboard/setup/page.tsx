@@ -49,6 +49,8 @@ export default async function SetupPage({
         signoffName: workspace.settings.signoffName,
         escalationMessage: workspace.settings.escalationMessage,
         defaultReplyStyle: workspace.settings.defaultReplyStyle,
+        draftGenerationMode: workspace.settings.draftGenerationMode,
+        focusQueueEnabled: workspace.settings.focusQueueEnabled,
         allowedPromises: workspace.settings.allowedPromises,
         bannedPhrases: workspace.settings.bannedPhrases,
         notificationEmails: workspace.settings.notificationEmails,

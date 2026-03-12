@@ -1,11 +1,13 @@
 import { notFound, redirect } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { getCurrentWorkspace } from '@/lib/db/queries';
 import { getReviewDetail } from '@/lib/services/reviews';
 import {
+  acknowledgeNoReplyAction,
   approveDraftAction,
+  escalateReviewAction,
   markPostedAction,
   regenerateDraftAction,
   rejectDraftAction
@@ -22,9 +24,11 @@ function humanizeToken(value?: string | null, fallback = 'Pending') {
 }
 
 export default async function ReviewDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ reviewId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const workspace = await getCurrentWorkspace();
   if (!workspace?.business) {
@@ -32,10 +36,22 @@ export default async function ReviewDetailPage({
   }
 
   const { reviewId } = await params;
+  const query = await searchParams;
   const detail = await getReviewDetail(workspace.business.id, Number(reviewId));
   if (!detail) {
     notFound();
   }
+  const draftError =
+    typeof query.draftError === 'string' ? query.draftError : null;
+  const draftErrorMessage =
+    draftError === 'skip_reply_locked'
+      ? 'Draft generation is blocked because this review is marked as no-reply.'
+      : null;
+
+  const isSkipReply = detail.latestAnalysis?.actionRecommendation === 'skip_reply';
+  const hasDraft = Boolean(detail.latestDraft);
+  const canGenerateDraft = Boolean(detail.latestAnalysis) && !isSkipReply;
+
   const issueTags = (detail.latestAnalysis?.issueTags ?? []).filter(
     (tag): tag is string => typeof tag === 'string'
   );
@@ -115,59 +131,124 @@ export default async function ReviewDetailPage({
             <CardTitle>Draft reply</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 px-0">
-            <form action={approveDraftAction} className="space-y-4">
-              <input type="hidden" name="draftId" value={detail.latestDraft?.id ?? ''} />
-              <input type="hidden" name="reviewId" value={detail.review.id} />
-              <Textarea
-                name="approvedText"
-                defaultValue={detail.latestDraft?.draftText || ''}
-                className="rounded-[1.5rem]"
-              />
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  className="rounded-full"
-                  disabled={!detail.latestDraft}
-                >
-                  Approve draft
-                </Button>
-                <Button
-                  type="submit"
-                  formAction={regenerateDraftAction}
-                  variant="secondary"
-                  className="rounded-full"
-                >
-                  Regenerate
-                </Button>
+            {draftErrorMessage ? (
+              <div
+                role="alert"
+                className="rounded-[1.25rem] border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              >
+                {draftErrorMessage}
               </div>
-            </form>
+            ) : null}
 
-            <form action={rejectDraftAction} className="space-y-4">
-              <input type="hidden" name="draftId" value={detail.latestDraft?.id ?? ''} />
-              <input type="hidden" name="reviewId" value={detail.review.id} />
-              <label className="text-foreground text-sm font-medium">
-                Reject reason
-                <Textarea name="reason" className="mt-2 rounded-[1.25rem]" />
-              </label>
-              <Button variant="secondary" className="rounded-full" disabled={!detail.latestDraft}>
-                Reject draft
-              </Button>
-            </form>
+            {!detail.latestAnalysis ? (
+              <div className="rounded-[1.25rem] border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                Analysis is not available yet. Run analysis before generating a draft.
+              </div>
+            ) : null}
 
-            <form action={markPostedAction} className="space-y-4">
-              <input type="hidden" name="draftId" value={detail.latestDraft?.id ?? ''} />
-              <input type="hidden" name="reviewId" value={detail.review.id} />
-              <label className="text-foreground text-sm font-medium">
-                Final posted text
-                <Textarea
-                  name="postedText"
-                  defaultValue={detail.latestDraft?.draftText || detail.review.ownerReplyText || ''}
-                  className="mt-2 rounded-[1.25rem]"
-                />
-              </label>
-              <Button variant="secondary" className="rounded-full">
-                Mark reply as posted
-              </Button>
-            </form>
+            {isSkipReply ? (
+              <div className="space-y-3 rounded-[1.25rem] border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                <p>No public reply recommended for this review.</p>
+                <form action={acknowledgeNoReplyAction}>
+                  <input type="hidden" name="reviewId" value={detail.review.id} />
+                  <FormSubmitButton
+                    variant="secondary"
+                    className="rounded-full"
+                    pendingText="Acknowledging..."
+                  >
+                    Acknowledge no-reply
+                  </FormSubmitButton>
+                </form>
+              </div>
+            ) : null}
+
+            {!hasDraft && canGenerateDraft ? (
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  <form action={regenerateDraftAction}>
+                    <input type="hidden" name="reviewId" value={detail.review.id} />
+                    <input type="hidden" name="generationReason" value="manual" />
+                    <FormSubmitButton className="rounded-full" pendingText="Generating...">
+                      Generate draft
+                    </FormSubmitButton>
+                  </form>
+                  <form action={escalateReviewAction}>
+                    <input type="hidden" name="reviewId" value={detail.review.id} />
+                    <FormSubmitButton
+                      pendingText="Escalating..."
+                      variant="outline"
+                      className="rounded-full"
+                    >
+                      Escalate / Assign owner
+                    </FormSubmitButton>
+                  </form>
+                </div>
+              </div>
+            ) : null}
+
+            {hasDraft && !isSkipReply ? (
+              <>
+                <form action={approveDraftAction} className="space-y-4">
+                  <input type="hidden" name="draftId" value={detail.latestDraft?.id ?? ''} />
+                  <input type="hidden" name="reviewId" value={detail.review.id} />
+                  <input type="hidden" name="generationReason" value="regenerate" />
+                  <Textarea
+                    name="approvedText"
+                    defaultValue={detail.latestDraft?.draftText || ''}
+                    className="rounded-[1.5rem]"
+                  />
+                  <FormSubmitButton className="rounded-full" pendingText="Approving...">
+                    Approve draft
+                  </FormSubmitButton>
+                </form>
+
+                <form action={regenerateDraftAction}>
+                  <input type="hidden" name="reviewId" value={detail.review.id} />
+                  <input type="hidden" name="generationReason" value="regenerate" />
+                  <FormSubmitButton
+                    variant="secondary"
+                    className="rounded-full"
+                    pendingText="Generating..."
+                  >
+                    Regenerate
+                  </FormSubmitButton>
+                </form>
+
+                <form action={rejectDraftAction} className="space-y-4">
+                  <input type="hidden" name="draftId" value={detail.latestDraft?.id ?? ''} />
+                  <input type="hidden" name="reviewId" value={detail.review.id} />
+                  <label className="text-foreground text-sm font-medium">
+                    Reject reason
+                    <Textarea name="reason" className="mt-2 rounded-[1.25rem]" />
+                  </label>
+                  <FormSubmitButton variant="secondary" className="rounded-full" pendingText="Rejecting...">
+                    Reject draft
+                  </FormSubmitButton>
+                </form>
+
+                <form action={markPostedAction} className="space-y-4">
+                  <input type="hidden" name="draftId" value={detail.latestDraft?.id ?? ''} />
+                  <input type="hidden" name="reviewId" value={detail.review.id} />
+                  <label className="text-foreground text-sm font-medium">
+                    Final posted text
+                    <Textarea
+                      name="postedText"
+                      defaultValue={
+                        detail.latestDraft?.draftText || detail.review.ownerReplyText || ''
+                      }
+                      className="mt-2 rounded-[1.25rem]"
+                    />
+                  </label>
+                  <FormSubmitButton
+                    variant="secondary"
+                    className="rounded-full"
+                    pendingText="Marking posted..."
+                  >
+                    Mark reply as posted
+                  </FormSubmitButton>
+                </form>
+              </>
+            ) : null}
           </CardContent>
         </Card>
       </div>

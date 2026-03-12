@@ -41,16 +41,30 @@ test('keeps summary when it adds distinct context', () => {
 test('maps workflow statuses to guided next actions', () => {
   const statuses = [
     ['new', 'Review analysis'],
+    ['analyzed', 'Generate draft'],
+    ['needs_attention', 'Generate draft'],
     ['draft_ready', 'Approve draft'],
     ['approved', 'Post and mark posted'],
     ['rejected', 'Regenerate draft'],
-    ['posted_manual', 'Completed']
+    ['posted_manual', 'Completed'],
+    ['closed_no_reply', 'Completed']
   ] as const;
 
   for (const [workflowStatus, expected] of statuses) {
     const viewModel = buildInboxRowViewModel({ workflowStatus });
     assert.equal(viewModel.nextActionLabel, expected);
   }
+});
+
+test('shows no-reply action when analyzed recommendation is skip reply', () => {
+  const viewModel = buildInboxRowViewModel({
+    workflowStatus: 'analyzed',
+    latestAnalysis: {
+      actionRecommendation: 'skip_reply'
+    }
+  });
+
+  assert.equal(viewModel.nextActionLabel, 'No reply recommended');
 });
 
 test('flags long reviews for read-full affordance', () => {

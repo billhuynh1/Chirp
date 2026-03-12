@@ -23,7 +23,8 @@ test('maps each status group to expected workflow statuses', () => {
     'approved'
   ]);
   assert.deepEqual(resolveWorkflowStatusesForFilters({ statusGroup: 'completed' }), [
-    'posted_manual'
+    'posted_manual',
+    'closed_no_reply'
   ]);
 });
 

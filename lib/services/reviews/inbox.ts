@@ -63,8 +63,23 @@ const NEXT_ACTION_COPY: Record<
   posted_manual: {
     label: 'Completed',
     description: 'Reply already posted and marked complete.'
+  },
+  closed_no_reply: {
+    label: 'Completed',
+    description: 'No-reply recommendation was acknowledged.'
   }
 };
+
+const ANALYZED_ACTION_COPY = {
+  generate: {
+    label: 'Generate draft',
+    description: 'Generate a reply draft when you are ready.'
+  },
+  noReply: {
+    label: 'No reply recommended',
+    description: 'AI marked this review as no-reply.'
+  }
+} as const;
 
 function normalizeTextForCompare(text: string | null | undefined) {
   return (text ?? '')
@@ -140,6 +155,18 @@ function getAiTakeaway(review: InboxReviewLike, showSummary: boolean) {
   return 'AI takeaway unavailable';
 }
 
+function getNextActionCopy(review: InboxReviewLike) {
+  if (review.workflowStatus === 'analyzed' || review.workflowStatus === 'needs_attention') {
+    if (review.latestAnalysis?.actionRecommendation === 'skip_reply') {
+      return ANALYZED_ACTION_COPY.noReply;
+    }
+
+    return ANALYZED_ACTION_COPY.generate;
+  }
+
+  return NEXT_ACTION_COPY[review.workflowStatus] ?? NEXT_ACTION_COPY.new;
+}
+
 export function buildInboxRowViewModel(review: InboxReviewLike): InboxRowViewModel {
   const customerMessage = (review.reviewText ?? '').trim() || 'Rating-only review';
   const messageNormalized = normalizeTextForCompare(customerMessage);
@@ -151,7 +178,7 @@ export function buildInboxRowViewModel(review: InboxReviewLike): InboxRowViewMod
     !messageNormalized.includes(summaryNormalized) &&
     !summaryNormalized.includes(messageNormalized.slice(0, 140));
 
-  const nextAction = NEXT_ACTION_COPY[review.workflowStatus] ?? NEXT_ACTION_COPY.new;
+  const nextAction = getNextActionCopy(review);
 
   return {
     customerMessage,

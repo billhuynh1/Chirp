@@ -54,6 +54,8 @@ type SetupWizardClientProps = {
     signoffName: string;
     escalationMessage: string;
     defaultReplyStyle: string;
+    draftGenerationMode: string;
+    focusQueueEnabled: boolean;
     allowedPromises: string[];
     bannedPhrases: string[];
     notificationEmails: string[];
@@ -244,7 +246,13 @@ export function SetupWizardClient({
           ...current,
           signoffName: draftingResult.summary?.drafting?.signoffName ?? current.signoffName,
           defaultReplyStyle:
-            draftingResult.summary?.drafting?.defaultReplyStyle ?? current.defaultReplyStyle
+            draftingResult.summary?.drafting?.defaultReplyStyle ?? current.defaultReplyStyle,
+          draftGenerationMode:
+            draftingResult.summary?.drafting?.draftGenerationMode ??
+            current.draftGenerationMode,
+          focusQueueEnabled:
+            draftingResult.summary?.drafting?.focusQueueEnabled ??
+            current.focusQueueEnabled
         }));
       }
       toast({
@@ -578,6 +586,13 @@ export function SetupWizardClient({
                   <div className="space-y-1 text-sm text-muted-foreground">
                     <p>Sign-off: {settingsData.signoffName}</p>
                     <p>Reply style: {settingsData.defaultReplyStyle}</p>
+                    <p>
+                      Draft mode:{' '}
+                      {settingsData.draftGenerationMode === 'manual_only'
+                        ? 'Manual only'
+                        : 'Auto low-risk'}
+                    </p>
+                    <p>Focus queue: {settingsData.focusQueueEnabled ? 'Enabled' : 'Disabled'}</p>
                   </div>
                 </div>
                 <Button
@@ -618,7 +633,7 @@ export function SetupWizardClient({
                     Used as the baseline tone for generated replies.
                   </p>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-3">
                   <div>
                     <Label htmlFor="signoffName">Sign-off name</Label>
                     <Input
@@ -646,6 +661,40 @@ export function SetupWizardClient({
                       Choose a consistent style such as Professional, Warm, or Concise.
                     </p>
                   </div>
+                  <div>
+                    <Label htmlFor="draftGenerationMode">Draft generation mode</Label>
+                    <select
+                      id="draftGenerationMode"
+                      name="draftGenerationMode"
+                      defaultValue={
+                        settingsData.draftGenerationMode === 'manual_only'
+                          ? 'manual_only'
+                          : 'hybrid_risk_gated'
+                      }
+                      className={`${fieldSurfaceClass} h-10 w-full px-3`}
+                    >
+                      <option value="hybrid_risk_gated">Hybrid risk-gated</option>
+                      <option value="manual_only">Manual only</option>
+                    </select>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Hybrid auto-generates low-risk drafts; manual only requires explicit generation.
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="focusQueueEnabled">Focus Queue beta</Label>
+                  <select
+                    id="focusQueueEnabled"
+                    name="focusQueueEnabled"
+                    defaultValue={settingsData.focusQueueEnabled ? 'true' : 'false'}
+                    className={`${fieldSurfaceClass} h-10 w-full px-3`}
+                  >
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled</option>
+                  </select>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Enable one-click owner queue prioritization in Inbox.
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="escalationMessage">Escalation message</Label>
