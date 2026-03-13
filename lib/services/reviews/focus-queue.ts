@@ -13,6 +13,7 @@ export type FocusQueueCandidate = {
   assignedUserId?: number | null;
   escalatedAt?: Date | string | null;
   reviewCreatedAt?: Date | string | null;
+  latestDraft?: { id: number } | null;
   latestAnalysis?: FocusQueueAnalysisSnapshot | null;
 };
 
@@ -148,17 +149,17 @@ export function resolveFocusQueueAction(
     };
   }
 
-  if (candidate.workflowStatus === 'draft_ready') {
-    return {
-      nextAction: 'approve_draft',
-      reason: 'Review and approve the generated draft.'
-    };
-  }
-
   if (candidate.workflowStatus === 'rejected') {
     return {
       nextAction: 'regenerate_draft',
       reason: 'Draft was rejected and needs a safer revision.'
+    };
+  }
+
+  if (candidate.latestDraft) {
+    return {
+      nextAction: 'approve_draft',
+      reason: 'Review and approve the generated draft.'
     };
   }
 

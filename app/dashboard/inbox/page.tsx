@@ -10,6 +10,23 @@ export const metadata = {
   title: 'Inbox - Chirp',
 };
 
+function parseSkippedReviewIds(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value.join(',') : value;
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    return [] as number[];
+  }
+
+  const unique = new Set<number>();
+  for (const token of raw.split(',')) {
+    const parsed = Number(token.trim());
+    if (Number.isInteger(parsed) && parsed > 0) {
+      unique.add(parsed);
+    }
+  }
+
+  return [...unique];
+}
+
 export default async function InboxPage({
   searchParams
 }: {
@@ -23,13 +40,18 @@ export default async function InboxPage({
   const params = await searchParams;
   const requestedView =
     typeof params.view === 'string' && params.view === 'list' ? 'list' : 'focus';
+  const skippedReviewIds = parseSkippedReviewIds(params.skip);
   const focusQueueEnabled = workspace.settings?.focusQueueEnabled ?? false;
   const activeView = focusQueueEnabled ? requestedView : 'list';
 
   // Fetch reviews directly from DB (which are mock data seeded by the app)
   const [dbReviews, focusQueueItem] = await Promise.all([
     listBusinessReviews(workspace.business.id),
-    focusQueueEnabled ? getFocusQueueReview(workspace.business.id) : Promise.resolve(null)
+    focusQueueEnabled
+      ? getFocusQueueReview(workspace.business.id, {
+          excludeReviewIds: skippedReviewIds
+        })
+      : Promise.resolve(null)
   ]);
 
   const mappedReviews: MockReview[] = dbReviews.map((r) => {
@@ -71,7 +93,7 @@ export default async function InboxPage({
   });
 
   return (
-    <section className="flex flex-col h-[calc(100vh-8rem)] lg:h-[calc(100vh-10rem)] gap-2">
+    <section className="flex flex-col h-[calc(100dvh-5.5rem)] sm:h-[calc(100dvh-6.5rem)] lg:h-[calc(100dvh-7.5rem)] gap-2">
       <div className="flex items-center justify-between shrink-0 mb-2">
         <h1 className="text-2xl font-semibold tracking-tight">Reviews Inbox</h1>
         <div className="flex items-center gap-2">
@@ -102,7 +124,7 @@ export default async function InboxPage({
       ) : null}
       <div className="flex-1 min-h-0">
         {activeView === 'focus' ? (
-          <FocusQueuePanel item={focusQueueItem} />
+          <FocusQueuePanel item={focusQueueItem} skippedReviewIds={skippedReviewIds} />
         ) : (
           <SplitPaneInbox initialReviews={mappedReviews} />
         )}

@@ -80,10 +80,20 @@ const FOCUS_QUEUE_ACTIONABLE_STATUSES = [
   'approved'
 ] as const;
 
+const RECENT_HANDLED_WORKFLOW_STATUSES = [
+  'approved',
+  'posted_manual',
+  'closed_no_reply'
+] as const;
+
 export type FocusQueueReview = {
   review: ReviewWithContext;
   nextAction: FocusQueueNextAction;
   reason: string;
+};
+
+type FocusQueueOptions = {
+  excludeReviewIds?: number[];
 };
 
 export async function listBusinessLocations(businessId: number) {
@@ -302,6 +312,32 @@ export async function listBusinessReviews(
   return sorted.slice(0, 100);
 }
 
+export async function listRecentHandledReviews(businessId: number, limit = 5) {
+  const businessLocations = await db
+    .select({ id: locations.id })
+    .from(locations)
+    .where(eq(locations.businessId, businessId));
+
+  const locationIds = businessLocations.map((location) => location.id);
+  if (locationIds.length === 0) {
+    return [] as ReviewWithContext[];
+  }
+
+  const rows = await db
+    .select()
+    .from(reviews)
+    .where(
+      and(
+        inArray(reviews.locationId, locationIds),
+        inArray(reviews.workflowStatus, [...RECENT_HANDLED_WORKFLOW_STATUSES])
+      )
+    )
+    .orderBy(desc(reviews.updatedAt))
+    .limit(limit);
+
+  return buildReviewRecords(rows);
+}
+
 async function maybeFilterByUrgency(rows: Review[], urgency?: string) {
   if (!urgency || rows.length === 0) {
     return rows;
@@ -380,7 +416,8 @@ async function getBusinessScopedReview(businessId: number, reviewId: number) {
 }
 
 export async function getFocusQueueReview(
-  businessId: number
+  businessId: number,
+  options: FocusQueueOptions = {}
 ): Promise<FocusQueueReview | null> {
   const [businessLocations, business] = await Promise.all([
     db.select({ id: locations.id }).from(locations).where(eq(locations.businessId, businessId)),
@@ -409,7 +446,16 @@ export async function getFocusQueueReview(
     return null;
   }
 
-  const records = await buildReviewRecords(candidates);
+  const excludedIds = new Set(options.excludeReviewIds ?? []);
+  const eligibleCandidates = excludedIds.size
+    ? candidates.filter((candidate) => !excludedIds.has(candidate.id))
+    : candidates;
+
+  if (eligibleCandidates.length === 0) {
+    return null;
+  }
+
+  const records = await buildReviewRecords(eligibleCandidates);
   const owner = await getBusinessOwnerContact(business.teamId);
   const sorted = sortFocusQueueCandidates(records, owner?.id ?? null);
   const topCandidate = sorted[0];

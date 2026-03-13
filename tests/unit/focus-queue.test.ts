@@ -79,6 +79,18 @@ test('resolves no-reply items to acknowledge action', () => {
   assert.equal(resolution.nextAction, 'acknowledge_no_reply');
 });
 
+test('resolves needs-attention items with an existing draft to approve action', () => {
+  const resolution = resolveFocusQueueAction({
+    id: 101,
+    workflowStatus: 'needs_attention',
+    starRating: 2,
+    latestDraft: { id: 999 },
+    latestAnalysis: { actionRecommendation: 'owner_review_required' }
+  });
+
+  assert.equal(resolution.nextAction, 'approve_draft');
+});
+
 test('excludes closed no-reply reviews from actionable queue candidates', () => {
   const sorted = sortFocusQueueCandidates(
     [
