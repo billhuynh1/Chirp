@@ -79,7 +79,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <Card className="bg-card shadow-sm">
+      <Card className="bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Urgent reviews</CardTitle>
           <Button asChild variant="ghost" size="sm" className="rounded-full">
@@ -117,7 +117,7 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card className="bg-card shadow-sm">
+      <Card className="bg-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Recent</CardTitle>
           <Button asChild variant="ghost" size="sm" className="rounded-full">
@@ -178,7 +178,7 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <Card className="bg-card shadow-sm">
+      <Card className="bg-card">
         <CardHeader>
           <CardTitle>MVP analytics</CardTitle>
         </CardHeader>
@@ -205,7 +205,7 @@ export default async function DashboardPage() {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="bg-card shadow-sm">
+        <Card className="bg-card">
           <CardHeader>
             <CardTitle className="text-sm">Review Queue</CardTitle>
           </CardHeader>
@@ -227,7 +227,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card shadow-sm">
+        <Card className="bg-card">
           <CardHeader>
             <CardTitle className="text-sm">Reply Throughput</CardTitle>
           </CardHeader>

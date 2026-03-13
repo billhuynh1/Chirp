@@ -9,6 +9,7 @@
     "test:e2e:ui": "playwright test --ui",
     "db:setup": "npx tsx lib/db/setup.ts",
     "db:seed": "npx tsx lib/db/seed.ts",
+    "db:seed:mock-reviews": "npx tsx lib/db/dev-seed-mock-reviews.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
