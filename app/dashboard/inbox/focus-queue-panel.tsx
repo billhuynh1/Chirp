@@ -9,10 +9,10 @@ import {
   approveDraftAction,
   escalateReviewAction,
   markPostedAction,
-  regenerateDraftAction,
   rejectDraftAction
 } from '@/app/dashboard/actions';
 import { FocusQueueDraftEditor } from '@/app/dashboard/inbox/focus-queue-draft-editor';
+import { FocusQueueDraftTriggerButton } from '@/app/dashboard/inbox/focus-queue-draft-trigger-button';
 
 function humanizeToken(value?: string | null, fallback = 'Pending') {
   if (!value) {
@@ -41,25 +41,27 @@ function PrimaryAction({ item }: { item: FocusQueueReview }) {
 
   if (item.nextAction === 'generate_draft') {
     return (
-      <form action={regenerateDraftAction}>
-        <input type="hidden" name="reviewId" value={reviewId} />
-        <input type="hidden" name="generationReason" value="manual" />
-        <FormSubmitButton className="w-full justify-center rounded-full" pendingText="Generating...">
-          Generate draft
-        </FormSubmitButton>
-      </form>
+      <FocusQueueDraftTriggerButton
+        reviewId={reviewId}
+        mode="generate"
+        label="Generate draft"
+        pendingText="Generating..."
+        className="w-full justify-center rounded-full"
+      />
     );
   }
 
   if (item.nextAction === 'regenerate_draft') {
     return (
-      <form action={regenerateDraftAction}>
-        <input type="hidden" name="reviewId" value={reviewId} />
-        <input type="hidden" name="generationReason" value="regenerate" />
-        <FormSubmitButton className="w-full justify-center rounded-full" pendingText="Generating...">
-          Regenerate draft
-        </FormSubmitButton>
-      </form>
+      <FocusQueueDraftTriggerButton
+        reviewId={reviewId}
+        draftId={draftId}
+        currentDraftText={draftText}
+        mode="regenerate"
+        label="Regenerate draft"
+        pendingText="Regenerating..."
+        className="w-full justify-center rounded-full"
+      />
     );
   }
 
@@ -119,17 +121,16 @@ function ActionHub({
           <Link href={skipHref}>Skip</Link>
         </Button>
         {draft && !isSkipReply ? (
-          <form action={regenerateDraftAction}>
-            <input type="hidden" name="reviewId" value={review.id} />
-            <input type="hidden" name="generationReason" value="regenerate" />
-            <FormSubmitButton
-              variant="outline"
-              className="w-full justify-center rounded-full"
-              pendingText="Generating..."
-            >
-              Regenerate
-            </FormSubmitButton>
-          </form>
+          <FocusQueueDraftTriggerButton
+            reviewId={review.id}
+            draftId={draft.id}
+            currentDraftText={draft.draftText}
+            mode="regenerate"
+            label="Regenerate"
+            pendingText="Regenerating..."
+            variant="outline"
+            className="w-full justify-center rounded-full"
+          />
         ) : null}
         {draft && !isSkipReply ? (
           <form action={rejectDraftAction}>

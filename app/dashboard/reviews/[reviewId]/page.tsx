@@ -65,6 +65,8 @@ export default async function ReviewDetailPage({
   const draftErrorMessage =
     draftError === 'skip_reply_locked'
       ? 'Draft generation is blocked because this review is marked as no-reply.'
+      : draftError === 'draft_generation_rate_limited'
+        ? 'You are generating drafts too quickly. Please wait a moment and try again.'
       : null;
 
   const isSkipReply = detail.latestAnalysis?.actionRecommendation === 'skip_reply';
@@ -326,7 +328,6 @@ export default async function ReviewDetailPage({
                 >
                   <input type="hidden" name="draftId" value={detail.latestDraft?.id ?? ''} />
                   <input type="hidden" name="reviewId" value={detail.review.id} />
-                  <input type="hidden" name="generationReason" value="regenerate" />
                   <Textarea
                     name="approvedText"
                     defaultValue={detail.latestDraft?.draftText || ''}
@@ -336,20 +337,20 @@ export default async function ReviewDetailPage({
                     <FormSubmitButton className="rounded-full" pendingText="Approving...">
                       Approve draft
                     </FormSubmitButton>
-                    <Button
-                      type="submit"
-                      form="regenerate-draft-form"
-                      variant="secondary"
-                      className="rounded-full"
-                    >
-                      Regenerate
-                    </Button>
                   </div>
                 </form>
 
-                <form id="regenerate-draft-form" action={regenerateDraftAction}>
+                <form action={regenerateDraftAction}>
                   <input type="hidden" name="reviewId" value={detail.review.id} />
                   <input type="hidden" name="generationReason" value="regenerate" />
+                  <FormSubmitButton
+                    variant="secondary"
+                    className="rounded-full"
+                    pendingText="Regenerating..."
+                    successToastMessage="Draft regenerated"
+                  >
+                    Regenerate
+                  </FormSubmitButton>
                 </form>
 
                 <div className="grid gap-4 lg:grid-cols-2">

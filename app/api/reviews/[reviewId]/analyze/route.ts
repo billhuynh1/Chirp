@@ -1,5 +1,9 @@
 import { analyzeStoredReview } from '@/lib/services/reviews';
 import { getCurrentWorkspace } from '@/lib/db/queries';
+import {
+  type AbuseProtectionResponse,
+  isAbuseProtectionError
+} from '@/lib/services/reviews/abuse-protection';
 
 export async function POST(
   _: Request,
@@ -12,7 +16,28 @@ export async function POST(
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const analysis = await analyzeStoredReview(Number(reviewId));
-  return Response.json({ analysis });
-}
+  try {
+    const analysis = await analyzeStoredReview(Number(reviewId));
+    return Response.json({ analysis });
+  } catch (error) {
+    if (isAbuseProtectionError(error)) {
+      return Response.json(
+        {
+          error: {
+            code: error.code,
+            message: error.message,
+            retryAfterSeconds: error.retryAfterSeconds
+          }
+        } satisfies AbuseProtectionResponse,
+        {
+          status: error.status,
+          headers: {
+            'Retry-After': String(error.retryAfterSeconds)
+          }
+        }
+      );
+    }
 
+    throw error;
+  }
+}

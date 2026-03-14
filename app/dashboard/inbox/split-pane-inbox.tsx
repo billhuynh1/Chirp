@@ -42,6 +42,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
   const [filter, setFilter] = useState<FilterType>('all');
   const [sort, setSort] = useState<SortType>('urgency');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   // Derived filtered & sorted reviews
   const filteredReviews = useMemo(() => {
@@ -180,6 +181,138 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
            variant: 'success',
            durationMs: 4000
         });
+    }
+  };
+
+  const handleRegenerateDraft = async () => {
+    if (!selectedReview) {
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      const response = await fetch(`/api/reviews/${selectedReview.id}/drafts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          generationReason: 'regenerate'
+        })
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            draft?: {
+              id?: number;
+              draftText?: string;
+              generationMetadata?: {
+                source?: string;
+                reason?: string;
+                openaiError?: {
+                  status?: number;
+                  code?: string;
+                  message?: string;
+                };
+              };
+            };
+            error?: {
+              message?: string;
+            };
+          }
+        | null;
+
+      if (!response.ok) {
+        toast({
+          title: 'Could not regenerate draft',
+          description: payload?.error?.message ?? 'Please try again in a moment.',
+          variant: 'destructive',
+          durationMs: 6500
+        });
+        return;
+      }
+
+      const nextDraftText = payload?.draft?.draftText;
+      if (!nextDraftText) {
+        toast({
+          title: 'Could not regenerate draft',
+          description: 'No draft text was returned.',
+          variant: 'destructive',
+          durationMs: 6500
+        });
+        return;
+      }
+
+      const returnedDraftSource = payload?.draft?.generationMetadata?.source;
+      const returnedDraftReason = payload?.draft?.generationMetadata?.reason;
+      const returnedOpenAIError = payload?.draft?.generationMetadata?.openaiError;
+      const returnedSameDraft = nextDraftText.trim() === selectedReview.draftText.trim();
+
+      setReviews((current) =>
+        current.map((review) =>
+          review.id === selectedReview.id
+            ? {
+                ...review,
+                draftText: nextDraftText,
+                status: review.status === 'completed' ? review.status : 'draft_ready'
+              }
+            : review
+        )
+      );
+
+      let toastTitle = 'Draft regenerated';
+      let toastVariant: 'success' | 'destructive' = 'success';
+      let toastDescription = 'A fresh AI draft is now loaded in the editor.';
+      if (returnedDraftSource === 'rules') {
+        if (returnedDraftReason === 'critical_risk_gate') {
+          toastDescription =
+            'Critical risk review: safety gate prevented OpenAI generation and used fallback rules.';
+        } else if (returnedDraftReason === 'missing_openai_key') {
+          toastTitle = 'AI regeneration unavailable';
+          toastVariant = 'destructive';
+          toastDescription =
+            'OpenAI key not available to the server runtime. A fallback draft was generated instead.';
+        } else if (returnedDraftReason === 'openai_request_failed') {
+          toastTitle = 'AI regeneration failed';
+          toastVariant = 'destructive';
+          const detail = [
+            typeof returnedOpenAIError?.status === 'number'
+              ? `status ${returnedOpenAIError.status}`
+              : null,
+            returnedOpenAIError?.code ? `code ${returnedOpenAIError.code}` : null,
+            returnedOpenAIError?.message
+              ? `message ${returnedOpenAIError.message.slice(0, 180)}`
+              : null
+          ]
+            .filter(Boolean)
+            .join(', ');
+          toastDescription =
+            detail.length > 0
+              ? `OpenAI request failed (${detail}). A fallback draft was generated instead.`
+              : 'OpenAI request failed. A fallback draft was generated instead.';
+        } else {
+          toastDescription =
+            'Fallback rules generated this draft. OpenAI may be unavailable or blocked by safety gates.';
+        }
+      } else if (returnedSameDraft) {
+        toastDescription =
+          'The model returned the same wording. You can regenerate again or edit manually.';
+      }
+
+      toast({
+        title: toastTitle,
+        description: toastDescription,
+        variant: toastVariant,
+        durationMs: toastVariant === 'destructive' ? 7000 : 6000
+      });
+    } catch {
+      toast({
+        title: 'Could not regenerate draft',
+        description: 'Network error while generating a new draft.',
+        variant: 'destructive',
+        durationMs: 6500
+      });
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -416,8 +549,21 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
                                       'Post Reply'
                                   )}
                               </Button>
-                              <Button type="button" variant="outline" className="rounded-full">
-                                  Regenerate Draft
+                              <Button
+                                 type="button"
+                                 variant="outline"
+                                 className="rounded-full"
+                                 onClick={handleRegenerateDraft}
+                                 disabled={isRegenerating}
+                              >
+                                  {isRegenerating ? (
+                                    <>
+                                      <Loader2 className="mr-2 size-4 animate-spin" />
+                                      Regenerating...
+                                    </>
+                                  ) : (
+                                    'Regenerate Draft'
+                                  )}
                               </Button>
                               <Button type="button" variant="ghost" className="rounded-full text-muted-foreground hover:text-destructive">
                                   Reject & Escalate

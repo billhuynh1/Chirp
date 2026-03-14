@@ -336,6 +336,10 @@ export const replyDrafts = pgTable(
     tone: varchar('tone', { length: 50 }).notNull().default('professional'),
     ctaType: varchar('cta_type', { length: 50 }).notNull().default('none'),
     safetyNotes: jsonb('safety_notes').$type<JsonArray>().notNull().default([]),
+    generationMetadata: jsonb('generation_metadata')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     generationReason: varchar('generation_reason', { length: 80 })
       .notNull()
       .default('initial'),

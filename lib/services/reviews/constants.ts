@@ -14,7 +14,8 @@ export const HOME_SERVICE_ISSUE_TAGS = [
   'emergency_response',
   'billing_issue',
   'damage_claim',
-  'safety_concern'
+  'safety_concern',
+  'off_topic_spam'
 ] as const;
 
 export type HomeServiceIssueTag = (typeof HOME_SERVICE_ISSUE_TAGS)[number];
@@ -65,7 +66,8 @@ export const ISSUE_TAG_PATTERNS: Record<HomeServiceIssueTag, string[]> = {
   emergency_response: ['emergency', 'same day', 'after hours', 'urgent'],
   billing_issue: ['billing', 'invoice', 'charge', 'charged'],
   damage_claim: ['damage', 'damaged', 'broke', 'scratch'],
-  safety_concern: ['unsafe', 'dangerous', 'gas leak', 'fire', 'hazard']
+  safety_concern: ['unsafe', 'dangerous', 'gas leak', 'fire', 'hazard'],
+  off_topic_spam: []
 };
 
 export const POSITIVE_KEYWORDS = [

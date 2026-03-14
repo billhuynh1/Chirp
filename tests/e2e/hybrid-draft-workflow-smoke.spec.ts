@@ -2,6 +2,10 @@ import { expect, test } from '@playwright/test';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../lib/db/drizzle';
 import {
+  analyzeStoredReview,
+  generateDraftForReview
+} from '../../lib/services/reviews';
+import {
   businessSettings,
   businesses,
   locations,
@@ -80,6 +84,62 @@ async function createReviewFixture(email: string) {
     rawOutput: { source: 'fixture' },
     modelName: 'rules-v1'
   });
+
+  return review.id;
+}
+
+async function createUnanalyzedReviewFixture(email: string) {
+  const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  if (!user) {
+    throw new Error('Fixture user not found');
+  }
+
+  const [membership] = await db
+    .select()
+    .from(teamMembers)
+    .where(eq(teamMembers.userId, user.id))
+    .limit(1);
+  if (!membership) {
+    throw new Error('Fixture membership not found');
+  }
+
+  const [business] = await db
+    .select()
+    .from(businesses)
+    .where(eq(businesses.teamId, membership.teamId))
+    .limit(1);
+  if (!business) {
+    throw new Error('Fixture business not found');
+  }
+
+  const [location] = await db
+    .insert(locations)
+    .values({
+      businessId: business.id,
+      externalLocationId: `loc-analysis-${Date.now()}`,
+      name: 'Analysis Metadata Location',
+      status: 'active'
+    })
+    .returning();
+
+  const now = new Date();
+  const [review] = await db
+    .insert(reviews)
+    .values({
+      locationId: location.id,
+      externalReviewId: `review-analysis-${Date.now()}`,
+      provider: 'google_business_profile',
+      starRating: 5,
+      reviewText: 'Fast response and clear communication. Great job.',
+      reviewCreatedAt: now,
+      reviewUpdatedAt: now,
+      payloadHash: `hash-analysis-${Date.now()}`,
+      rawPayload: {},
+      workflowStatus: 'new',
+      priority: 'low',
+      needsAttention: false
+    })
+    .returning();
 
   return review.id;
 }
@@ -167,10 +227,164 @@ test('smoke: draft mode setup/settings and review generate/no-reply states', asy
   await expect(page.locator('#focusQueueEnabled')).toHaveValue('true');
 
   const reviewId = await createReviewFixture(email);
+
+  await page.route('**/api/reviews/*/drafts', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        draft: {
+          draftText: 'Mock regenerated draft for list view smoke check.',
+          tone: 'professional',
+          ctaType: 'none',
+          safetyNotes: ['No invented facts.']
+        }
+      })
+    });
+  });
+
+  await page.goto('/dashboard/inbox?view=list');
+  await expect(page.getByRole('button', { name: 'Regenerate Draft' })).toBeVisible();
+  await page.getByRole('button', { name: 'Regenerate Draft' }).click();
+  await expect(page.getByText('Draft regenerated')).toBeVisible();
+
   await page.goto(`/dashboard/reviews/${reviewId}`);
   await expect(page.getByRole('button', { name: 'Generate draft' })).toBeVisible();
   await page.getByRole('button', { name: 'Generate draft' }).click();
   await expect(page.getByRole('button', { name: 'Approve draft' })).toBeVisible();
+
+  await page.route('**/api/reply-drafts/*/regenerate', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        draft: {
+          draftText: 'Mock regenerated draft for focus queue smoke check.',
+          tone: 'professional',
+          ctaType: 'none',
+          safetyNotes: ['No invented facts.']
+        }
+      })
+    });
+  });
+
+  await page.goto('/dashboard/inbox?view=focus');
+  await expect(page.getByRole('button', { name: 'Regenerate' })).toBeVisible();
+  await page.getByRole('button', { name: 'Regenerate' }).click();
+  await expect(page.getByText('Draft regenerated')).toBeVisible();
+
+  const [generatedDraftRow] = await db
+    .select({
+      generationMetadata: replyDrafts.generationMetadata
+    })
+    .from(replyDrafts)
+    .where(and(eq(replyDrafts.reviewId, reviewId), eq(replyDrafts.isActive, true)))
+    .limit(1);
+  expect(typeof generatedDraftRow?.generationMetadata).toBe('object');
+  expect(
+    (generatedDraftRow?.generationMetadata as { source?: unknown } | undefined)?.source
+  ).toBeTruthy();
+
+  const originalApiKey = process.env.OPENAI_API_KEY;
+  const originalFetch = globalThis.fetch;
+  const metadataReviewId = await createUnanalyzedReviewFixture(email);
+  try {
+    process.env.OPENAI_API_KEY = 'test-key';
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          model: 'gpt-4o-mini-2026-03-01',
+          usage: {
+            prompt_tokens: 88,
+            completion_tokens: 22,
+            total_tokens: 110
+          },
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  sentiment: 'positive',
+                  urgency: 'low',
+                  riskLevel: 'low',
+                  issueTags: [],
+                  summary: 'Customer praised communication and speed.',
+                  actionRecommendation: 'publish_safe_reply',
+                  confidence: 93,
+                  requiresManualReview: false
+                })
+              }
+            }
+          ]
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )) as typeof fetch;
+
+    const analysisRecord = await analyzeStoredReview(metadataReviewId, {
+      bypassAbuseProtection: true
+    });
+    const analysisRawOutput = analysisRecord.rawOutput as {
+      source?: string;
+      promptVersion?: string;
+      usage?: { totalTokens?: number };
+    };
+
+    expect(analysisRawOutput.source).toBe('openai');
+    expect(analysisRawOutput.promptVersion).toBe('analysis-v3-compact-offtopic-gate');
+    expect(analysisRawOutput.usage?.totalTokens).toBe(110);
+
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          model: 'gpt-4o-mini-2026-03-02',
+          usage: {
+            prompt_tokens: 75,
+            completion_tokens: 20,
+            total_tokens: 95
+          },
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  draftText:
+                    'Thank you for your review. We appreciate your kind feedback.\n\nThe Team',
+                  tone: 'warm_professional',
+                  ctaType: 'none',
+                  safetyNotes: ['No invented facts.']
+                })
+              }
+            }
+          ]
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )) as typeof fetch;
+
+    const draftRecord = await generateDraftForReview(metadataReviewId, 'manual', {
+      bypassAbuseProtection: true
+    });
+    const draftMetadata = draftRecord.generationMetadata as {
+      source?: string;
+      promptVersion?: string;
+      usage?: { totalTokens?: number };
+    };
+    expect(draftMetadata.source).toBe('openai');
+    expect(draftMetadata.promptVersion).toBe('draft-v3-compact-personalized');
+    expect(draftMetadata.usage?.totalTokens).toBe(95);
+
+    await db
+      .update(reviews)
+      .set({
+        workflowStatus: 'posted_manual',
+        needsAttention: false
+      })
+      .where(eq(reviews.id, metadataReviewId));
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalApiKey === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = originalApiKey;
+    }
+  }
 
   await db
     .update(reviewAnalysis)

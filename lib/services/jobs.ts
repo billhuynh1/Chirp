@@ -21,12 +21,15 @@ export async function processPendingJobs(limit = 10) {
           await syncConnectedAccountReviews(Number(job.payload.connectedAccountId));
           break;
         case 'analyze_review':
-          await analyzeStoredReview(Number(job.payload.reviewId));
+          await analyzeStoredReview(Number(job.payload.reviewId), {
+            bypassAbuseProtection: true
+          });
           break;
         case 'generate_draft':
           await generateDraftForReview(
             Number(job.payload.reviewId),
-            String(job.payload.generationReason ?? 'manual')
+            String(job.payload.generationReason ?? 'manual'),
+            { bypassAbuseProtection: true }
           );
           break;
         case 'send_notification':

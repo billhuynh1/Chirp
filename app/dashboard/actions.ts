@@ -22,6 +22,7 @@ import { processPendingJobs } from '@/lib/services/jobs';
 import {
   isDraftGenerationConflictError
 } from '@/lib/services/reviews/draft-generation-policy';
+import { isAbuseProtectionError } from '@/lib/services/reviews/abuse-protection';
 import {
   approveDraft,
   acknowledgeNoReply,
@@ -475,6 +476,10 @@ export async function regenerateDraftAction(formData: FormData) {
   try {
     draft = await generateDraftForReview(reviewId, generationReason);
   } catch (error) {
+    if (isAbuseProtectionError(error)) {
+      redirect(`/dashboard/reviews/${reviewId}?draftError=${error.code}`);
+    }
+
     if (isDraftGenerationConflictError(error)) {
       redirect(`/dashboard/reviews/${reviewId}?draftError=${error.code}`);
     }

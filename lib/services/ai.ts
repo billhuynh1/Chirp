@@ -36,12 +36,61 @@ export type DraftResult = {
   ctaType: string;
   safetyNotes: string[];
   modelName: string;
+  generationMetadata: Record<string, unknown>;
 };
 
 type OpenAIMessage = {
   role: 'system' | 'user';
   content: string;
 };
+
+type OpenAIUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+};
+
+type OpenAIResponse<T> = {
+  data: T | null;
+  modelName: string | null;
+  usage: OpenAIUsage | null;
+};
+
+type OpenAIErrorMetadata = {
+  status: number;
+  code?: string;
+  message: string;
+};
+
+class OpenAIRequestError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor({
+    status,
+    code,
+    message
+  }: {
+    status: number;
+    code?: string;
+    message: string;
+  }) {
+    super(message);
+    this.name = 'OpenAIRequestError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+const ANALYSIS_PROMPT_VERSION = 'analysis-v3-compact-offtopic-gate';
+const DRAFT_PROMPT_VERSION = 'draft-v3-compact-personalized';
+const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
+const DEFAULT_BRAND_VOICE = 'Helpful, calm, and professional.';
+const DEFAULT_ESCALATION_MESSAGE = 'Please contact our office so we can review the details directly.';
+
+function getConfiguredOpenAIModel() {
+  return getEnv('OPENAI_MODEL') ?? DEFAULT_OPENAI_MODEL;
+}
 
 function normalizeText(text: string | null) {
   return (text ?? '').toLowerCase().trim();
@@ -97,6 +146,112 @@ function determineSentiment(review: Review, text: string) {
   }
 
   return 'positive' as const;
+}
+
+type OffTopicSpamDetection = {
+  detected: boolean;
+  matches: string[];
+};
+
+const OFF_TOPIC_SUMMARY =
+  'Review appears off-topic or promotional spam and not a legitimate customer feedback item. No public reply recommended.';
+
+function detectOffTopicSpam(reviewText: string | null): OffTopicSpamDetection {
+  const normalized = normalizeText(reviewText);
+  if (!normalized) {
+    return { detected: false, matches: [] };
+  }
+
+  const matches: string[] = [];
+  const strongCodingSignals: Array<[string, RegExp]> = [
+    ['coding_leetcode', /\bleetcode\b/],
+    ['coding_debug_request', /\b(debug|fix)\s+(this|my)\s+code\b/],
+    [
+      'coding_solve_request',
+      /\b(can you|please)\b.*\bsolve\b.*\b(problem|question|code|homework)\b/
+    ],
+    ['coding_write_code', /\bwrite\s+(the\s+)?(code|program|function|script)\b/],
+    ['coding_homework', /\b(homework|assignment)\b/]
+  ];
+
+  for (const [label, pattern] of strongCodingSignals) {
+    if (pattern.test(normalized)) {
+      matches.push(label);
+    }
+  }
+
+  const broadCodingSignals: Array<[string, RegExp]> = [
+    ['coding_python', /\bpython\b/],
+    ['coding_javascript', /\bjavascript\b/],
+    ['coding_java', /\bjava\b/],
+    ['coding_cplusplus', /\bc\+\+\b/],
+    ['coding_algorithm', /\balgorithm\b/],
+    ['coding_function', /\bfunction\b/],
+    ['coding_runtime_error', /\bruntime error\b/]
+  ];
+  const broadCodingMatches = broadCodingSignals
+    .filter(([, pattern]) => pattern.test(normalized))
+    .map(([label]) => label);
+  const hasQuestionCue =
+    normalized.includes('?') ||
+    normalized.includes('can you') ||
+    normalized.includes('how do i');
+  if (matches.length === 0 && broadCodingMatches.length >= 2 && hasQuestionCue) {
+    matches.push(...broadCodingMatches.slice(0, 2));
+  }
+
+  const hasLink =
+    /(https?:\/\/|www\.|bit\.ly\/|tinyurl\.com\/|t\.me\/|wa\.me\/)/.test(normalized);
+  const hasContactCue =
+    /\b(contact me|dm me|text me|call me|whatsapp|telegram)\b/.test(normalized);
+  const hasPromoCue =
+    /\b(earn money|make money|investment|crypto|forex|seo services?|marketing services?|click (the )?link|subscribe)\b/.test(
+      normalized
+    );
+  const hasDirectContact =
+    /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(normalized) ||
+    /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/.test(normalized);
+
+  if ((hasLink && (hasContactCue || hasPromoCue)) || (hasPromoCue && hasDirectContact)) {
+    matches.push('spam_promotional_contact');
+  }
+
+  return {
+    detected: matches.length > 0,
+    matches: [...new Set(matches)]
+  };
+}
+
+function applyOffTopicSpamOverride(review: Review, analysis: AnalysisResult): AnalysisResult {
+  const detection = detectOffTopicSpam(review.reviewText);
+  const rawOutput = {
+    ...(analysis.rawOutput ?? {}),
+    offTopicSpam: {
+      detected: detection.detected,
+      matches: detection.matches,
+      source: 'deterministic_v1'
+    }
+  };
+
+  if (!detection.detected) {
+    return {
+      ...analysis,
+      rawOutput
+    };
+  }
+
+  const issueTags: HomeServiceIssueTag[] = analysis.issueTags.includes('off_topic_spam')
+    ? analysis.issueTags
+    : [...analysis.issueTags, 'off_topic_spam'];
+
+  return {
+    ...analysis,
+    issueTags,
+    summary: OFF_TOPIC_SUMMARY,
+    actionRecommendation: 'skip_reply',
+    requiresManualReview: true,
+    rawOutput
+  };
 }
 
 function determineRiskLevel(review: Review, text: string, issueTags: string[]) {
@@ -204,6 +359,25 @@ function buildDraftSafetyNotes(
   return notes;
 }
 
+function extractCustomerFirstName(reviewerName: string | null) {
+  const rawName = reviewerName?.trim();
+  if (!rawName) {
+    return null;
+  }
+
+  const normalized = rawName.replace(/\s+/g, ' ');
+  const firstToken = normalized.split(' ')[0]?.replace(/^[^a-zA-Z]+|[^a-zA-Z'-]+$/g, '');
+  if (!firstToken) {
+    return null;
+  }
+
+  if (!/^[a-zA-Z][a-zA-Z'-]{1,29}$/.test(firstToken)) {
+    return null;
+  }
+
+  return firstToken.charAt(0).toUpperCase() + firstToken.slice(1);
+}
+
 function buildFallbackDraft(
   review: Review,
   business: Business,
@@ -213,16 +387,29 @@ function buildFallbackDraft(
   const signoff = settings.signoffName || business.name;
   const reviewText = normalizeText(review.reviewText);
   const safetyNotes = buildDraftSafetyNotes(settings, analysis);
+  const customerFirstName = extractCustomerFirstName(review.reviewerName);
+  const criticalGreeting = customerFirstName
+    ? `Thank you, ${customerFirstName}, for sharing this feedback.`
+    : 'Thank you for sharing this feedback.';
+  const positiveGreeting = customerFirstName
+    ? `Thank you, ${customerFirstName}, for the review.`
+    : 'Thank you for the review.';
+  const neutralGreeting = customerFirstName
+    ? `Thank you, ${customerFirstName}, for the feedback.`
+    : 'Thank you for the feedback.';
 
   if (analysis.riskLevel === 'critical' || analysis.requiresManualReview) {
     return {
-      draftText: `Thank you for sharing this feedback. We’re sorry to hear your experience did not meet expectations. We take concerns like this seriously and would like to review the details directly. Please contact our office${
+      draftText: `${criticalGreeting} We’re sorry to hear your experience did not meet expectations. We take concerns like this seriously and would like to review the details directly. Please contact our office${
         business.primaryPhone ? ` at ${business.primaryPhone}` : ''
       } so we can look into this further.\n\n${signoff}`,
       tone: 'calm_professional',
       ctaType: 'offline_contact',
       safetyNotes,
-      modelName: 'rules-v1'
+      modelName: 'rules-v1',
+      generationMetadata: {
+        source: 'rules'
+      }
     };
   }
 
@@ -234,29 +421,39 @@ function buildFallbackDraft(
       : 'the experience with our team';
 
     return {
-      draftText: `Thank you for the review. We appreciate you taking the time to share your experience with ${serviceMention}. We’re glad our team could help, and we appreciate the opportunity to earn your trust.\n\n${signoff}`,
+      draftText: `${positiveGreeting} We appreciate you taking the time to share your experience with ${serviceMention}. We’re glad our team could help, and we appreciate the opportunity to earn your trust.\n\n${signoff}`,
       tone: 'warm_professional',
       ctaType: 'none',
       safetyNotes,
-      modelName: 'rules-v1'
+      modelName: 'rules-v1',
+      generationMetadata: {
+        source: 'rules'
+      }
     };
   }
 
   return {
-    draftText: `Thank you for the feedback. We appreciate you bringing this to our attention. We always want communication and service to feel clear and professional. Please contact our office${
+    draftText: `${neutralGreeting} We appreciate you bringing this to our attention. We always want communication and service to feel clear and professional. Please contact our office${
       business.primaryPhone ? ` at ${business.primaryPhone}` : ''
     } so we can review the details with you directly.\n\n${signoff}`,
     tone: 'professional',
     ctaType: 'offline_contact',
     safetyNotes,
-    modelName: 'rules-v1'
+    modelName: 'rules-v1',
+    generationMetadata: {
+      source: 'rules'
+    }
   };
 }
 
-async function fetchOpenAIJson<T>(messages: OpenAIMessage[]) {
+async function fetchOpenAIJson<T>(messages: OpenAIMessage[]): Promise<OpenAIResponse<T>> {
   const apiKey = getEnv('OPENAI_API_KEY');
   if (!apiKey) {
-    return null;
+    return {
+      data: null,
+      modelName: null,
+      usage: null
+    };
   }
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -266,7 +463,7 @@ async function fetchOpenAIJson<T>(messages: OpenAIMessage[]) {
       Authorization: `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: getEnv('OPENAI_MODEL') ?? 'gpt-4o-mini',
+      model: getConfiguredOpenAIModel(),
       response_format: {
         type: 'json_object'
       },
@@ -275,19 +472,84 @@ async function fetchOpenAIJson<T>(messages: OpenAIMessage[]) {
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI request failed with status ${response.status}`);
+    const errorText = await response.text();
+    let errorCode: string | undefined;
+    let errorMessage = `OpenAI request failed with status ${response.status}`;
+
+    if (errorText) {
+      try {
+        const parsed = JSON.parse(errorText) as {
+          error?: {
+            code?: string;
+            message?: string;
+          };
+        };
+        if (parsed.error?.code) {
+          errorCode = parsed.error.code;
+        }
+        if (parsed.error?.message) {
+          errorMessage = parsed.error.message;
+        }
+      } catch {
+        errorMessage = errorText.slice(0, 320);
+      }
+    }
+
+    throw new OpenAIRequestError({
+      status: response.status,
+      code: errorCode,
+      message: errorMessage
+    });
   }
 
   const payload = (await response.json()) as {
+    model?: string;
+    usage?: {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      total_tokens?: number;
+    };
     choices?: Array<{ message?: { content?: string } }>;
   };
 
   const content = payload.choices?.[0]?.message?.content;
   if (!content) {
+    return {
+      data: null,
+      modelName: payload.model ?? getConfiguredOpenAIModel(),
+      usage: payload.usage
+        ? {
+            promptTokens: payload.usage.prompt_tokens ?? 0,
+            completionTokens: payload.usage.completion_tokens ?? 0,
+            totalTokens: payload.usage.total_tokens ?? 0
+          }
+        : null
+    };
+  }
+
+  return {
+    data: JSON.parse(content) as T,
+    modelName: payload.model ?? getConfiguredOpenAIModel(),
+    usage: payload.usage
+      ? {
+          promptTokens: payload.usage.prompt_tokens ?? 0,
+          completionTokens: payload.usage.completion_tokens ?? 0,
+          totalTokens: payload.usage.total_tokens ?? 0
+        }
+      : null
+  };
+}
+
+function extractOpenAIErrorMetadata(error: unknown): OpenAIErrorMetadata | null {
+  if (!(error instanceof OpenAIRequestError)) {
     return null;
   }
 
-  return JSON.parse(content) as T;
+  return {
+    status: error.status,
+    code: error.code,
+    message: error.message
+  };
 }
 
 function sanitizeDraftText(text: string, settings: BusinessSettings) {
@@ -306,8 +568,96 @@ function sanitizeDraftText(text: string, settings: BusinessSettings) {
   return text.trim();
 }
 
+function ensureSignoff(draftText: string, signoffName: string) {
+  const normalizedSignoff = signoffName.trim();
+  if (!normalizedSignoff) {
+    return draftText.trim();
+  }
+
+  const trimmedDraft = draftText.trim();
+  const draftLines = trimmedDraft.split('\n').map((line) => line.trim());
+  const hasSignoff = draftLines.some(
+    (line) => line.toLowerCase() === normalizedSignoff.toLowerCase()
+  );
+
+  if (hasSignoff) {
+    return trimmedDraft;
+  }
+
+  return `${trimmedDraft}\n\n${normalizedSignoff}`;
+}
+
+function buildAnalysisPromptPayload(review: Review) {
+  return {
+    rating: review.starRating,
+    reviewText: review.reviewText,
+    allowedIssueTags: Object.keys(ISSUE_TAG_PATTERNS)
+  };
+}
+
+function buildDraftPromptPayload({
+  review,
+  business,
+  settings,
+  analysis
+}: {
+  review: Review;
+  business: Business;
+  settings: BusinessSettings;
+  analysis: AnalysisResult | ReviewAnalysis;
+}) {
+  const payload: Record<string, unknown> = {
+    businessName: business.name,
+    rating: review.starRating,
+    reviewText: review.reviewText,
+    summary: analysis.summary,
+    sentiment: analysis.sentiment,
+    urgency: analysis.urgency,
+    riskLevel: analysis.riskLevel,
+    requiresManualReview: analysis.requiresManualReview
+  };
+
+  const customerFirstName = extractCustomerFirstName(review.reviewerName);
+  if (customerFirstName) {
+    payload.customerFirstName = customerFirstName;
+  }
+
+  const trimmedBrandVoice = settings.brandVoice.trim();
+  if (trimmedBrandVoice && trimmedBrandVoice !== DEFAULT_BRAND_VOICE) {
+    payload.brandVoice = trimmedBrandVoice;
+  }
+
+  const trimmedSignoffName = settings.signoffName.trim();
+  if (trimmedSignoffName) {
+    payload.signoffName = trimmedSignoffName;
+  }
+
+  const trimmedEscalationMessage = settings.escalationMessage.trim();
+  if (
+    trimmedEscalationMessage &&
+    trimmedEscalationMessage !== DEFAULT_ESCALATION_MESSAGE
+  ) {
+    payload.escalationMessage = trimmedEscalationMessage;
+  }
+
+  if (settings.allowedPromises.length > 0) {
+    payload.allowedPromises = settings.allowedPromises;
+  }
+
+  if (settings.bannedPhrases.length > 0) {
+    payload.bannedPhrases = settings.bannedPhrases;
+  }
+
+  if (analysis.issueTags.length > 0) {
+    payload.issueTags = analysis.issueTags;
+  }
+
+  return payload;
+}
+
 export async function analyzeReviewWithAI(review: Review) {
-  const fallback = buildFallbackAnalysis(review);
+  const fallbackBase = buildFallbackAnalysis(review);
+  const fallback = applyOffTopicSpamOverride(review, fallbackBase);
   if (!getEnv('OPENAI_API_KEY') || !review.reviewText) {
     return fallback;
   }
@@ -317,41 +667,41 @@ export async function analyzeReviewWithAI(review: Review) {
       {
         role: 'system',
         content:
-          'You classify customer reviews for a plumbing business. Return valid JSON only. Never invent facts.'
+          [
+            'You classify customer reviews for a plumbing business.',
+            'Return valid JSON only with keys: sentiment, urgency, riskLevel, issueTags, summary, actionRecommendation, confidence, requiresManualReview.',
+            'Allowed sentiment: positive|neutral|negative|mixed|rating_only.',
+            'Allowed urgency/riskLevel: low|medium|high|critical.',
+            'Allowed actionRecommendation: publish_safe_reply|owner_review_required|owner_review_and_offline_resolution|skip_reply.',
+            'If content is off-topic or promotional spam (including coding/homework requests), return actionRecommendation=skip_reply and include issueTags containing off_topic_spam.',
+            'Confidence must be an integer 0-100.',
+            'Never invent facts.'
+          ].join(' ')
       },
       {
         role: 'user',
-        content: JSON.stringify({
-          rating: review.starRating,
-          reviewText: review.reviewText,
-          allowedIssueTags: Object.keys(ISSUE_TAG_PATTERNS),
-          expectedShape: {
-            sentiment: 'positive|neutral|negative|mixed|rating_only',
-            urgency: 'low|medium|high|critical',
-            riskLevel: 'low|medium|high|critical',
-            issueTags: ['issue_tag'],
-            summary: 'short summary',
-            actionRecommendation:
-              'publish_safe_reply|owner_review_required|owner_review_and_offline_resolution|skip_reply',
-            confidence: 0,
-            requiresManualReview: true
-          }
-        })
+        content: JSON.stringify(buildAnalysisPromptPayload(review))
       }
     ]);
 
-    if (!result) {
+    if (!result.data) {
       return fallback;
     }
 
-    return {
-      ...fallback,
-      ...result,
-      modelName: getEnv('OPENAI_MODEL') ?? 'gpt-4o-mini',
+    const modelName = result.modelName ?? getConfiguredOpenAIModel();
+    const mergedResult: AnalysisResult = {
+      ...fallbackBase,
+      ...result.data,
+      modelName,
       rawOutput: {
-        source: 'openai'
+        source: 'openai',
+        promptVersion: ANALYSIS_PROMPT_VERSION,
+        modelName,
+        usage: result.usage
       }
     };
+
+    return applyOffTopicSpamOverride(review, mergedResult);
   } catch {
     return fallback;
   }
@@ -369,8 +719,24 @@ export async function generateReplyDraftWithAI({
   analysis: AnalysisResult | ReviewAnalysis;
 }) {
   const fallback = buildFallbackDraft(review, business, settings, analysis);
-  if (!getEnv('OPENAI_API_KEY') || analysis.riskLevel === 'critical') {
-    return fallback;
+  if (!getEnv('OPENAI_API_KEY')) {
+    return {
+      ...fallback,
+      generationMetadata: {
+        ...fallback.generationMetadata,
+        reason: 'missing_openai_key'
+      }
+    };
+  }
+
+  if (analysis.riskLevel === 'critical') {
+    return {
+      ...fallback,
+      generationMetadata: {
+        ...fallback.generationMetadata,
+        reason: 'critical_risk_gate'
+      }
+    };
   }
 
   try {
@@ -383,49 +749,66 @@ export async function generateReplyDraftWithAI({
       {
         role: 'system',
         content:
-          'You write safe review replies for plumbing businesses. Return JSON only. Do not invent facts, admit liability, promise refunds, or mention compensation unless explicitly provided.'
+          [
+            'You write safe review replies for plumbing businesses.',
+            'Return valid JSON only with keys: draftText, tone, ctaType, safetyNotes.',
+            'Allowed ctaType: none|offline_contact|follow_up.',
+            'Use natural, human wording and avoid robotic phrasing.',
+            'If customerFirstName is provided, address the customer by first name once.',
+            'Do not invent facts, admit liability, promise refunds, or mention compensation unless explicitly provided.'
+          ].join(' ')
       },
       {
         role: 'user',
-        content: JSON.stringify({
-          businessName: business.name,
-          vertical: business.vertical,
-          brandVoice: settings.brandVoice,
-          signoffName: settings.signoffName,
-          escalationMessage: settings.escalationMessage,
-          allowedPromises: settings.allowedPromises,
-          bannedPhrases: settings.bannedPhrases,
-          rating: review.starRating,
-          reviewText: review.reviewText,
-          summary: analysis.summary,
-          sentiment: analysis.sentiment,
-          urgency: analysis.urgency,
-          riskLevel: analysis.riskLevel,
-          issueTags: analysis.issueTags,
-          requiresManualReview: analysis.requiresManualReview,
-          expectedShape: {
-            draftText: 'reply text',
-            tone: 'professional',
-            ctaType: 'none|offline_contact|follow_up',
-            safetyNotes: ['note']
-          }
-        })
+        content: JSON.stringify(
+          buildDraftPromptPayload({
+            review,
+            business,
+            settings,
+            analysis
+          })
+        )
       }
     ]);
 
-    if (!result?.draftText) {
+    if (!result.data?.draftText) {
       return fallback;
     }
 
+    const modelName = result.modelName ?? getConfiguredOpenAIModel();
+    const resolvedSignoffName = settings.signoffName.trim() || business.name;
     return {
-      draftText: sanitizeDraftText(result.draftText, settings),
-      tone: result.tone || fallback.tone,
-      ctaType: result.ctaType || fallback.ctaType,
+      draftText: ensureSignoff(
+        sanitizeDraftText(result.data.draftText, settings),
+        resolvedSignoffName
+      ),
+      tone: result.data.tone || fallback.tone,
+      ctaType: result.data.ctaType || fallback.ctaType,
       safetyNotes:
-        result.safetyNotes?.length > 0 ? result.safetyNotes : fallback.safetyNotes,
-      modelName: getEnv('OPENAI_MODEL') ?? 'gpt-4o-mini'
+        result.data.safetyNotes?.length > 0
+          ? result.data.safetyNotes
+          : fallback.safetyNotes,
+      modelName,
+      generationMetadata: {
+        source: 'openai',
+        promptVersion: DRAFT_PROMPT_VERSION,
+        modelName,
+        usage: result.usage
+      }
     };
-  } catch {
-    return fallback;
+  } catch (error) {
+    const openaiError = extractOpenAIErrorMetadata(error);
+    if (openaiError) {
+      console.error('OpenAI draft generation failed', openaiError);
+    }
+
+    return {
+      ...fallback,
+      generationMetadata: {
+        ...fallback.generationMetadata,
+        reason: 'openai_request_failed',
+        ...(openaiError ? { openaiError } : {})
+      }
+    };
   }
 }

@@ -7,6 +7,10 @@ import {
   type DraftGenerationConflictResponse,
   isDraftGenerationConflictError
 } from '@/lib/services/reviews/draft-generation-policy';
+import {
+  type AbuseProtectionResponse,
+  isAbuseProtectionError
+} from '@/lib/services/reviews/abuse-protection';
 
 export async function POST(
   _: Request,
@@ -30,6 +34,24 @@ export async function POST(
     const regenerated = await generateDraftForReview(draft.reviewId, 'regenerate');
     return Response.json({ draft: regenerated });
   } catch (error) {
+    if (isAbuseProtectionError(error)) {
+      return Response.json(
+        {
+          error: {
+            code: error.code,
+            message: error.message,
+            retryAfterSeconds: error.retryAfterSeconds
+          }
+        } satisfies AbuseProtectionResponse,
+        {
+          status: error.status,
+          headers: {
+            'Retry-After': String(error.retryAfterSeconds)
+          }
+        }
+      );
+    }
+
     if (isDraftGenerationConflictError(error)) {
       return Response.json(
         {
