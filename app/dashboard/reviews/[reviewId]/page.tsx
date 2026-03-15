@@ -328,6 +328,7 @@ export default async function ReviewDetailPage({
                 >
                   <input type="hidden" name="draftId" value={detail.latestDraft?.id ?? ''} />
                   <input type="hidden" name="reviewId" value={detail.review.id} />
+                  <input type="hidden" name="generationReason" value="regenerate" />
                   <Textarea
                     name="approvedText"
                     defaultValue={detail.latestDraft?.draftText || ''}
@@ -337,20 +338,16 @@ export default async function ReviewDetailPage({
                     <FormSubmitButton className="rounded-full" pendingText="Approving...">
                       Approve draft
                     </FormSubmitButton>
+                    <FormSubmitButton
+                      formAction={regenerateDraftAction}
+                      variant="secondary"
+                      className="rounded-full"
+                      pendingText="Regenerating..."
+                      successToastMessage="Draft regenerated"
+                    >
+                      Regenerate
+                    </FormSubmitButton>
                   </div>
-                </form>
-
-                <form action={regenerateDraftAction}>
-                  <input type="hidden" name="reviewId" value={detail.review.id} />
-                  <input type="hidden" name="generationReason" value="regenerate" />
-                  <FormSubmitButton
-                    variant="secondary"
-                    className="rounded-full"
-                    pendingText="Regenerating..."
-                    successToastMessage="Draft regenerated"
-                  >
-                    Regenerate
-                  </FormSubmitButton>
                 </form>
 
                 <div className="grid gap-4 lg:grid-cols-2">

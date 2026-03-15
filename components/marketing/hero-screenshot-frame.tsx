@@ -1,6 +1,5 @@
 import Image from 'next/image';
-import { AlertTriangle, CheckCircle2, Inbox } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Inbox, Sparkles } from 'lucide-react';
 
 type HeroScreenshotFrameProps = {
   src: string;
@@ -9,57 +8,59 @@ type HeroScreenshotFrameProps = {
 
 export function HeroScreenshotFrame({ src, alt }: HeroScreenshotFrameProps) {
   return (
-    <div className="relative mx-auto w-full max-w-[640px]">
-      <div className="absolute -left-4 top-8 hidden rounded-2xl border border-rose-200/80 bg-card/90 px-4 py-3 text-sm shadow-sm lg:block dark:border-rose-400/20 dark:bg-[#15191f]/90">
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">
-            <AlertTriangle className="size-4" />
-          </div>
-          <div>
-            <p className="font-semibold text-slate-900 dark:text-white">Urgent review</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Damage claim, needs owner review</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute -right-3 bottom-10 hidden rounded-2xl border border-emerald-200/80 bg-card/90 px-4 py-3 text-sm shadow-sm md:block dark:border-emerald-400/20 dark:bg-[#15191f]/90">
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
-            <CheckCircle2 className="size-4" />
-          </div>
-          <div>
-            <p className="font-semibold text-slate-900 dark:text-white">Draft ready</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Reply ready to edit</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-[2rem] border border-border/70 bg-card/85 p-3 shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(20,24,31,0.96),rgba(11,16,22,0.98))] dark:shadow-[0_24px_60px_rgba(2,6,23,0.4)]">
-        <div className="rounded-[1.55rem] border border-border/70 bg-card/90 p-3 dark:border-white/10 dark:bg-[#0f141a]">
-          <div className="flex items-center justify-between rounded-[1.2rem] border border-border/60 bg-muted/50 px-4 py-3 dark:border-white/5 dark:bg-white/5">
+    <div className="relative mx-auto w-full max-w-[920px]">
+      <div className="marketing-panel rounded-[2.4rem] border border-white/10 bg-[#0c1621] p-4 shadow-[0_24px_48px_rgba(2,6,23,0.28)]">
+        <div className="rounded-[1.9rem] border border-white/10 bg-[#101b27] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-[1.45rem] border border-white/10 bg-[#13202d] px-5 py-4">
             <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-[#1f2a2a] text-white">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-[#ff8f70] text-slate-950">
                 <Inbox className="size-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">Chirp inbox</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Google reviews</p>
+                <p className="text-sm font-semibold text-white">Chirp inbox</p>
+                <p className="text-xs text-slate-400">Google review workflow</p>
               </div>
             </div>
-            <Badge variant="warning">
-              3 need approval
-            </Badge>
+            <div className="text-right text-xs text-slate-300">
+              <p>19 new reviews</p>
+              <p className="text-slate-500">3 waiting on approval</p>
+            </div>
           </div>
 
-          <div className="relative mt-3 overflow-hidden rounded-[1.4rem] border border-border/70 bg-muted/35 dark:border-white/10 dark:bg-[#0b1117]">
-            <Image
-              src={src}
-              alt={alt}
-              width={1260}
-              height={920}
-              priority
-              className="h-auto w-full"
-            />
+          <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#081018]">
+              <Image
+                src={src}
+                alt={alt}
+                width={1260}
+                height={920}
+                priority
+                className="h-auto w-full"
+              />
+            </div>
+
+            <div className="space-y-4 rounded-[1.6rem] border border-white/10 bg-[#13202d] p-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  Workflow view
+                </p>
+                <p className="mt-2 text-sm font-semibold text-white">
+                  See what is new, what is risky, and what is ready for review.
+                </p>
+              </div>
+
+              <div className="rounded-[1.3rem] border border-white/10 bg-[#162534] p-4">
+                <div className="flex items-center gap-2 text-[#7fd6ff]">
+                  <Sparkles className="size-4" />
+                  <p className="text-sm font-semibold">Draft checks</p>
+                </div>
+                <ul className="mt-3 space-y-2 text-xs leading-6 text-slate-300">
+                  <li>Careful reply draft</li>
+                  <li>Manual approval step</li>
+                  <li>Clear completion status</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -1,5 +1,4 @@
 import { generateDraftForReview } from '@/lib/services/reviews';
-import { getCurrentWorkspace } from '@/lib/db/queries';
 import {
   type DraftGenerationConflictResponse,
   isDraftGenerationConflictError
@@ -8,32 +7,72 @@ import {
   type AbuseProtectionResponse,
   isAbuseProtectionError
 } from '@/lib/services/reviews/abuse-protection';
+import {
+  isReviewMutationAccessError
+} from '@/lib/services/reviews';
+import {
+  mutationErrorResponseWithTelemetry,
+  parseJsonBody,
+  parseRouteId,
+  requireWorkspaceForMutation
+} from '@/lib/auth/mutation-guards';
+import { createDraftBodySchema } from '@/lib/validation/mutations';
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ reviewId: string }> }
 ) {
-  const workspace = await getCurrentWorkspace();
-  const { reviewId } = await params;
-
-  if (!workspace?.business) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const workspaceResult = await requireWorkspaceForMutation(request, {
+    targetEntityType: 'review'
+  });
+  if (!workspaceResult.ok) {
+    return workspaceResult.response;
+  }
+  const workspace = workspaceResult.workspace;
+  const { reviewId: reviewIdRaw } = await params;
+  const reviewId = await parseRouteId(reviewIdRaw, 'reviewId', {
+    request,
+    workspace,
+    targetEntityType: 'review'
+  });
+  if (!reviewId.ok) {
+    return reviewId.response;
   }
 
-  let generationReason: string = 'manual';
-  try {
-    const body = (await request.json()) as { generationReason?: unknown };
-    if (body.generationReason === 'regenerate') {
-      generationReason = 'regenerate';
+  const bodyResult = await parseJsonBody(request, createDraftBodySchema, {
+    allowEmpty: true,
+    telemetry: {
+      workspace,
+      targetEntityType: 'review',
+      targetEntityId: reviewId.value
     }
-  } catch {
-    // keep default generation reason for requests without JSON body
+  });
+  if (!bodyResult.ok) {
+    return bodyResult.response;
   }
+  const generationReason =
+    bodyResult.data.generationReason === 'regenerate' ? 'regenerate' : 'manual';
 
   try {
-    const draft = await generateDraftForReview(Number(reviewId), generationReason);
+    const draft = await generateDraftForReview(reviewId.value, generationReason, {
+      businessId: workspace.business.id
+    });
     return Response.json({ draft });
   } catch (error) {
+    if (isReviewMutationAccessError(error)) {
+      return mutationErrorResponseWithTelemetry(
+        403,
+        error.code,
+        error.message,
+        {
+          request,
+          workspace,
+          targetEntityType: 'review',
+          targetEntityId: reviewId.value
+        }
+      );
+    }
+
     if (isAbuseProtectionError(error)) {
       return Response.json(
         {
@@ -61,6 +100,20 @@ export async function POST(
           }
         } satisfies DraftGenerationConflictResponse,
         { status: error.status }
+      );
+    }
+
+    if (error instanceof Error && error.message === 'Review not found') {
+      return mutationErrorResponseWithTelemetry(
+        404,
+        'not_found',
+        error.message,
+        {
+          request,
+          workspace,
+          targetEntityType: 'review',
+          targetEntityId: reviewId.value
+        }
       );
     }
 

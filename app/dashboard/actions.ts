@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getCurrentWorkspace } from '@/lib/db/queries';
+import { assertWorkspaceOwner, isWorkspaceOwner } from '@/lib/auth/mutation-guards';
 import { createAuditLog } from '@/lib/services/audit';
 import {
   completeBusinessOnboarding,
@@ -76,6 +77,17 @@ function getFormData(args: [FormData] | [SetupStepActionResult | null, FormData]
   return args.length === 1 ? args[0] : args[1];
 }
 
+const positiveIntSchema = z.coerce.number().int().positive();
+const generationReasonSchema = z.enum(['manual', 'regenerate']);
+
+function parsePositiveIntFromFormData(formData: FormData, key: string, label: string) {
+  const parsed = positiveIntSchema.safeParse(formData.get(key));
+  if (!parsed.success) {
+    throw new Error(`${label} is required`);
+  }
+  return parsed.data;
+}
+
 function toOnboardingSnapshot(status: Awaited<ReturnType<typeof getOnboardingStatus>>): SetupOnboardingSnapshot {
   return {
     completedCount: status.completedCount,
@@ -139,6 +151,17 @@ export async function saveBusinessProfileAction(
   const formData = getFormData(args);
   const workspace = await requireWorkspace();
   const isInline = isInlineResponseMode(formData);
+  if (!isWorkspaceOwner(workspace)) {
+    if (isInline) {
+      return buildInlineErrorResult(
+        workspace.business.id,
+        'business-profile',
+        'server-error',
+        'Only owners can update business profile settings.'
+      );
+    }
+    throw new Error('Owner role is required for this action.');
+  }
   const successRedirect = getSetupSuccessRedirect(formData);
   const parsedResult = businessProfileSchema.safeParse(Object.fromEntries(formData));
   if (!parsedResult.success) {
@@ -261,6 +284,17 @@ export async function saveBusinessSettingsAction(
   const formData = getFormData(args);
   const workspace = await requireWorkspace();
   const isInline = isInlineResponseMode(formData);
+  if (!isWorkspaceOwner(workspace)) {
+    if (isInline) {
+      return buildInlineErrorResult(
+        workspace.business.id,
+        'drafting-defaults',
+        'server-error',
+        'Only owners can update drafting defaults.'
+      );
+    }
+    throw new Error('Owner role is required for this action.');
+  }
   const successRedirect = getSetupSuccessRedirect(formData);
   const parsedResult = businessSettingsSchema.safeParse(Object.fromEntries(formData));
   if (!parsedResult.success) {
@@ -327,8 +361,24 @@ export async function selectGoogleLocationsAction(
   const formData = getFormData(args);
   const workspace = await requireWorkspace();
   const isInline = isInlineResponseMode(formData);
+  if (!isWorkspaceOwner(workspace)) {
+    if (isInline) {
+      return buildInlineErrorResult(
+        workspace.business.id,
+        'google-locations',
+        'server-error',
+        'Only owners can manage Google integration locations.'
+      );
+    }
+    throw new Error('Owner role is required for this action.');
+  }
   const successRedirect = getSetupSuccessRedirect(formData);
-  const connectedAccountId = Number(formData.get('connectedAccountId'));
+  const connectedAccountIdResult = positiveIntSchema.safeParse(
+    formData.get('connectedAccountId')
+  );
+  const connectedAccountId = connectedAccountIdResult.success
+    ? connectedAccountIdResult.data
+    : 0;
   const locationIds = formData
     .getAll('locationIds')
     .map((value) => String(value))
@@ -410,10 +460,12 @@ export async function selectGoogleLocationsAction(
 
 export async function syncNowAction(formData: FormData) {
   const workspace = await requireWorkspace();
-  const connectedAccountId = Number(formData.get('connectedAccountId'));
-  if (!connectedAccountId) {
-    throw new Error('Connected account is required');
-  }
+  assertWorkspaceOwner(workspace);
+  const connectedAccountId = parsePositiveIntFromFormData(
+    formData,
+    'connectedAccountId',
+    'Connected account'
+  );
 
   await queueJob({
     jobType: 'sync_reviews',
@@ -466,15 +518,19 @@ export async function completeSetupAction() {
 
 export async function regenerateDraftAction(formData: FormData) {
   const workspace = await requireWorkspace();
-  const reviewId = Number(formData.get('reviewId'));
-  const generationReason = String(formData.get('generationReason') ?? 'regenerate');
-  if (!reviewId) {
-    throw new Error('Review ID is required');
-  }
+  const reviewId = parsePositiveIntFromFormData(formData, 'reviewId', 'Review ID');
+  const generationReasonResult = generationReasonSchema.safeParse(
+    formData.get('generationReason') ?? 'regenerate'
+  );
+  const generationReason = generationReasonResult.success
+    ? generationReasonResult.data
+    : 'regenerate';
 
   let draft;
   try {
-    draft = await generateDraftForReview(reviewId, generationReason);
+    draft = await generateDraftForReview(reviewId, generationReason, {
+      businessId: workspace.business.id
+    });
   } catch (error) {
     if (isAbuseProtectionError(error)) {
       redirect(`/dashboard/reviews/${reviewId}?draftError=${error.code}`);
@@ -502,25 +558,28 @@ export async function regenerateDraftAction(formData: FormData) {
 
 export async function approveDraftAction(formData: FormData) {
   const workspace = await requireWorkspace();
-  const draftId = Number(formData.get('draftId'));
-  const reviewId = Number(formData.get('reviewId'));
+  const draftId = parsePositiveIntFromFormData(formData, 'draftId', 'Draft ID');
+  const reviewId = parsePositiveIntFromFormData(formData, 'reviewId', 'Review ID');
   const approvedText = String(formData.get('approvedText') ?? '');
 
-  const draft = await approveDraft({
+  const result = await approveDraft({
     draftId,
     userId: workspace.user.id,
-    editedText: approvedText || null
+    editedText: approvedText || null,
+    businessId: workspace.business.id
   });
 
-  await createAuditLog({
-    teamId: workspace.team.id,
-    businessId: workspace.business.id,
-    userId: workspace.user.id,
-    entityType: 'reply_draft',
-    entityId: draft.id,
-    action: 'approve_draft',
-    metadata: { reviewId }
-  });
+  if (!result.wasNoop) {
+    await createAuditLog({
+      teamId: workspace.team.id,
+      businessId: workspace.business.id,
+      userId: workspace.user.id,
+      entityType: 'reply_draft',
+      entityId: result.draft.id,
+      action: 'approve_draft',
+      metadata: { reviewId }
+    });
+  }
 
   revalidatePath(`/dashboard/reviews/${reviewId}`);
   revalidatePath('/dashboard/inbox');
@@ -528,24 +587,27 @@ export async function approveDraftAction(formData: FormData) {
 
 export async function rejectDraftAction(formData: FormData) {
   const workspace = await requireWorkspace();
-  const draftId = Number(formData.get('draftId'));
-  const reviewId = Number(formData.get('reviewId'));
+  const draftId = parsePositiveIntFromFormData(formData, 'draftId', 'Draft ID');
+  const reviewId = parsePositiveIntFromFormData(formData, 'reviewId', 'Review ID');
   const reason = String(formData.get('reason') ?? '');
 
-  const draft = await rejectDraft({
+  const result = await rejectDraft({
     draftId,
-    reason: reason || null
+    reason: reason || null,
+    businessId: workspace.business.id
   });
 
-  await createAuditLog({
-    teamId: workspace.team.id,
-    businessId: workspace.business.id,
-    userId: workspace.user.id,
-    entityType: 'reply_draft',
-    entityId: draft.id,
-    action: 'reject_draft',
-    metadata: { reviewId, reason }
-  });
+  if (!result.wasNoop) {
+    await createAuditLog({
+      teamId: workspace.team.id,
+      businessId: workspace.business.id,
+      userId: workspace.user.id,
+      entityType: 'reply_draft',
+      entityId: result.draft.id,
+      action: 'reject_draft',
+      metadata: { reviewId, reason }
+    });
+  }
 
   revalidatePath(`/dashboard/reviews/${reviewId}`);
   revalidatePath('/dashboard/inbox');
@@ -553,25 +615,29 @@ export async function rejectDraftAction(formData: FormData) {
 
 export async function markPostedAction(formData: FormData) {
   const workspace = await requireWorkspace();
-  const reviewId = Number(formData.get('reviewId'));
-  const draftId = Number(formData.get('draftId') || 0);
+  const reviewId = parsePositiveIntFromFormData(formData, 'reviewId', 'Review ID');
+  const draftIdResult = positiveIntSchema.safeParse(formData.get('draftId'));
+  const draftId = draftIdResult.success ? draftIdResult.data : 0;
   const postedText = String(formData.get('postedText') ?? '');
 
-  await markReviewPosted({
+  const result = await markReviewPosted({
     reviewId,
     draftId: draftId || null,
-    postedText: postedText || null
+    postedText: postedText || null,
+    businessId: workspace.business.id
   });
 
-  await createAuditLog({
-    teamId: workspace.team.id,
-    businessId: workspace.business.id,
-    userId: workspace.user.id,
-    entityType: 'review',
-    entityId: reviewId,
-    action: 'mark_posted',
-    metadata: {}
-  });
+  if (!result.wasNoop) {
+    await createAuditLog({
+      teamId: workspace.team.id,
+      businessId: workspace.business.id,
+      userId: workspace.user.id,
+      entityType: 'review',
+      entityId: reviewId,
+      action: 'mark_posted',
+      metadata: {}
+    });
+  }
 
   revalidatePath(`/dashboard/reviews/${reviewId}`);
   revalidatePath('/dashboard/inbox');
@@ -583,10 +649,7 @@ export async function dismissOnboardingAction() {
 
 export async function acknowledgeNoReplyAction(formData: FormData) {
   const workspace = await requireWorkspace();
-  const reviewId = Number(formData.get('reviewId'));
-  if (!reviewId) {
-    throw new Error('Review ID is required');
-  }
+  const reviewId = parsePositiveIntFromFormData(formData, 'reviewId', 'Review ID');
 
   const review = await acknowledgeNoReply({
     businessId: workspace.business.id,
@@ -609,25 +672,25 @@ export async function acknowledgeNoReplyAction(formData: FormData) {
 
 export async function escalateReviewAction(formData: FormData) {
   const workspace = await requireWorkspace();
-  const reviewId = Number(formData.get('reviewId'));
-  if (!reviewId) {
-    throw new Error('Review ID is required');
-  }
+  assertWorkspaceOwner(workspace);
+  const reviewId = parsePositiveIntFromFormData(formData, 'reviewId', 'Review ID');
 
-  const review = await escalateReview({
+  const result = await escalateReview({
     businessId: workspace.business.id,
     reviewId
   });
 
-  await createAuditLog({
-    teamId: workspace.team.id,
-    businessId: workspace.business.id,
-    userId: workspace.user.id,
-    entityType: 'review',
-    entityId: review.id,
-    action: 'escalate_review',
-    metadata: {}
-  });
+  if (!result.wasNoop) {
+    await createAuditLog({
+      teamId: workspace.team.id,
+      businessId: workspace.business.id,
+      userId: workspace.user.id,
+      entityType: 'review',
+      entityId: result.review.id,
+      action: 'escalate_review',
+      metadata: {}
+    });
+  }
 
   revalidatePath('/dashboard/inbox');
   revalidatePath(`/dashboard/reviews/${reviewId}`);

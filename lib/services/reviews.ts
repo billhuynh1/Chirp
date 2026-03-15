@@ -98,6 +98,22 @@ type FocusQueueOptions = {
   excludeReviewIds?: number[];
 };
 
+export class ReviewMutationAccessError extends Error {
+  readonly code = 'forbidden_scope';
+  readonly status = 403;
+
+  constructor(message = 'Access to this review or draft is forbidden for the current workspace.') {
+    super(message);
+    this.name = 'ReviewMutationAccessError';
+  }
+}
+
+export function isReviewMutationAccessError(
+  error: unknown
+): error is ReviewMutationAccessError {
+  return error instanceof ReviewMutationAccessError;
+}
+
 const DRAFT_REVIEW_COOLDOWN_MS = 20_000;
 const DRAFT_BUSINESS_WINDOW_MS = 5 * 60_000;
 const DRAFT_BUSINESS_MAX_ATTEMPTS = 12;
@@ -551,6 +567,66 @@ async function getBusinessScopedReview(businessId: number, reviewId: number) {
   return row?.review ?? null;
 }
 
+async function getBusinessScopedDraft(businessId: number, draftId: number) {
+  const [row] = await db
+    .select({
+      draft: replyDrafts
+    })
+    .from(replyDrafts)
+    .innerJoin(reviews, eq(reviews.id, replyDrafts.reviewId))
+    .innerJoin(locations, eq(locations.id, reviews.locationId))
+    .where(and(eq(replyDrafts.id, draftId), eq(locations.businessId, businessId)))
+    .limit(1);
+
+  return row?.draft ?? null;
+}
+
+async function assertReviewMutationAccess(reviewId: number, businessId?: number) {
+  if (!businessId) {
+    return;
+  }
+
+  const scopedReview = await getBusinessScopedReview(businessId, reviewId);
+  if (scopedReview) {
+    return;
+  }
+
+  const [existingReview] = await db
+    .select({ id: reviews.id })
+    .from(reviews)
+    .where(eq(reviews.id, reviewId))
+    .limit(1);
+
+  if (existingReview) {
+    throw new ReviewMutationAccessError();
+  }
+
+  throw new Error('Review not found');
+}
+
+async function assertDraftMutationAccess(draftId: number, businessId?: number) {
+  if (!businessId) {
+    return;
+  }
+
+  const scopedDraft = await getBusinessScopedDraft(businessId, draftId);
+  if (scopedDraft) {
+    return;
+  }
+
+  const [existingDraft] = await db
+    .select({ id: replyDrafts.id })
+    .from(replyDrafts)
+    .where(eq(replyDrafts.id, draftId))
+    .limit(1);
+
+  if (existingDraft) {
+    throw new ReviewMutationAccessError();
+  }
+
+  throw new Error('Draft not found');
+}
+
 export async function getFocusQueueReview(
   businessId: number,
   options: FocusQueueOptions = {}
@@ -747,8 +823,10 @@ export async function syncConnectedAccountReviews(connectedAccountId: number) {
 
 export async function analyzeStoredReview(
   reviewId: number,
-  options: { bypassAbuseProtection?: boolean } = {}
+  options: { bypassAbuseProtection?: boolean; businessId?: number } = {}
 ) {
+  await assertReviewMutationAccess(reviewId, options.businessId);
+
   if (!options.bypassAbuseProtection) {
     await enforceAnalysisAbuseProtection(reviewId);
   }
@@ -902,8 +980,10 @@ export async function analyzeStoredReview(
 export async function generateDraftForReview(
   reviewId: number,
   generationReason = 'manual',
-  options: { bypassAbuseProtection?: boolean } = {}
+  options: { bypassAbuseProtection?: boolean; businessId?: number } = {}
 ) {
+  await assertReviewMutationAccess(reviewId, options.businessId);
+
   const { review, business, settings } = await getBusinessContextForReview(reviewId);
   if (
     !options.bypassAbuseProtection &&
@@ -976,15 +1056,29 @@ export async function generateDraftForReview(
   return createdDraft;
 }
 
+export type DraftMutationResult = {
+  draft: ReplyDraft;
+  wasNoop: boolean;
+};
+
+export type ReviewMutationResult = {
+  review: Review;
+  wasNoop: boolean;
+};
+
 export async function approveDraft({
   draftId,
   userId,
-  editedText
+  editedText,
+  businessId
 }: {
   draftId: number;
   userId: number;
   editedText?: string | null;
-}) {
+  businessId?: number;
+}): Promise<DraftMutationResult> {
+  await assertDraftMutationAccess(draftId, businessId);
+
   const draft = await db.query.replyDrafts.findFirst({
     where: eq(replyDrafts.id, draftId)
   });
@@ -993,11 +1087,44 @@ export async function approveDraft({
     throw new Error('Draft not found');
   }
 
+  const normalizedEditedText = editedText?.trim() ? editedText.trim() : null;
+  const nextDraftText = normalizedEditedText ?? draft.draftText;
+  const nextStatus = normalizedEditedText ? 'edited' : 'approved';
+  const isAlreadyApproved =
+    draft.draftText === nextDraftText &&
+    draft.draftStatus === nextStatus &&
+    draft.approvedByUserId === userId &&
+    Boolean(draft.approvedAt);
+
+  if (isAlreadyApproved) {
+    const currentReview = await db.query.reviews.findFirst({
+      where: eq(reviews.id, draft.reviewId)
+    });
+    if (
+      currentReview &&
+      (currentReview.workflowStatus !== 'approved' || currentReview.needsAttention !== false)
+    ) {
+      await db
+        .update(reviews)
+        .set({
+          workflowStatus: 'approved',
+          needsAttention: false,
+          updatedAt: new Date()
+        })
+        .where(eq(reviews.id, draft.reviewId));
+    }
+
+    return {
+      draft,
+      wasNoop: true
+    };
+  }
+
   const [updatedDraft] = await db
     .update(replyDrafts)
     .set({
-      draftText: editedText?.trim() ? editedText.trim() : draft.draftText,
-      draftStatus: editedText?.trim() ? 'edited' : 'approved',
+      draftText: nextDraftText,
+      draftStatus: nextStatus,
       approvedByUserId: userId,
       approvedAt: new Date(),
       updatedAt: new Date()
@@ -1014,16 +1141,23 @@ export async function approveDraft({
     })
     .where(eq(reviews.id, draft.reviewId));
 
-  return updatedDraft;
+  return {
+    draft: updatedDraft,
+    wasNoop: false
+  };
 }
 
 export async function rejectDraft({
   draftId,
-  reason
+  reason,
+  businessId
 }: {
   draftId: number;
   reason?: string | null;
-}) {
+  businessId?: number;
+}): Promise<DraftMutationResult> {
+  await assertDraftMutationAccess(draftId, businessId);
+
   const draft = await db.query.replyDrafts.findFirst({
     where: eq(replyDrafts.id, draftId)
   });
@@ -1032,11 +1166,38 @@ export async function rejectDraft({
     throw new Error('Draft not found');
   }
 
+  const nextReason = reason ?? null;
+  const isAlreadyRejected =
+    draft.draftStatus === 'rejected' && draft.rejectedReason === nextReason;
+  if (isAlreadyRejected) {
+    const currentReview = await db.query.reviews.findFirst({
+      where: eq(reviews.id, draft.reviewId)
+    });
+    if (
+      currentReview &&
+      (currentReview.workflowStatus !== 'rejected' || currentReview.needsAttention !== true)
+    ) {
+      await db
+        .update(reviews)
+        .set({
+          workflowStatus: 'rejected',
+          needsAttention: true,
+          updatedAt: new Date()
+        })
+        .where(eq(reviews.id, draft.reviewId));
+    }
+
+    return {
+      draft,
+      wasNoop: true
+    };
+  }
+
   const [updatedDraft] = await db
     .update(replyDrafts)
     .set({
       draftStatus: 'rejected',
-      rejectedReason: reason ?? null,
+      rejectedReason: nextReason,
       updatedAt: new Date()
     })
     .where(eq(replyDrafts.id, draftId))
@@ -1051,44 +1212,97 @@ export async function rejectDraft({
     })
     .where(eq(reviews.id, draft.reviewId));
 
-  return updatedDraft;
+  return {
+    draft: updatedDraft,
+    wasNoop: false
+  };
 }
 
 export async function markReviewPosted({
   reviewId,
   draftId,
-  postedText
+  postedText,
+  businessId
 }: {
   reviewId: number;
   draftId?: number | null;
   postedText?: string | null;
-}) {
+  businessId?: number;
+}): Promise<ReviewMutationResult> {
+  await assertReviewMutationAccess(reviewId, businessId);
+
+  const normalizedPostedText = postedText?.trim() || null;
+  let draftWasNoop = true;
+
   if (draftId) {
-    await db
-      .update(replyDrafts)
-      .set({
-        draftStatus: 'posted_manual',
-        postedAt: new Date(),
-        postedText: postedText?.trim() || null,
-        updatedAt: new Date()
-      })
-      .where(eq(replyDrafts.id, draftId));
+    await assertDraftMutationAccess(draftId, businessId);
+    const draft = await db.query.replyDrafts.findFirst({
+      where: eq(replyDrafts.id, draftId)
+    });
+    if (!draft) {
+      throw new Error('Draft not found');
+    }
+    if (draft.reviewId !== reviewId) {
+      throw new ReviewMutationAccessError('Draft does not belong to this review.');
+    }
+
+    const isDraftAlreadyPosted =
+      draft.draftStatus === 'posted_manual' &&
+      draft.postedText === normalizedPostedText &&
+      Boolean(draft.postedAt);
+
+    if (!isDraftAlreadyPosted) {
+      draftWasNoop = false;
+      await db
+        .update(replyDrafts)
+        .set({
+          draftStatus: 'posted_manual',
+          postedAt: new Date(),
+          postedText: normalizedPostedText,
+          updatedAt: new Date()
+        })
+        .where(eq(replyDrafts.id, draftId));
+    }
   }
 
-  const [review] = await db
+  const review = await db.query.reviews.findFirst({
+    where: eq(reviews.id, reviewId)
+  });
+  if (!review) {
+    throw new Error('Review not found');
+  }
+
+  const isReviewAlreadyPosted =
+    review.workflowStatus === 'posted_manual' &&
+    review.needsAttention === false &&
+    review.hasOwnerReply === true &&
+    review.ownerReplyText === normalizedPostedText &&
+    Boolean(review.ownerReplyUpdatedAt);
+
+  if (isReviewAlreadyPosted) {
+    return {
+      review,
+      wasNoop: draftWasNoop
+    };
+  }
+
+  const [updatedReview] = await db
     .update(reviews)
     .set({
       workflowStatus: 'posted_manual',
       needsAttention: false,
       hasOwnerReply: true,
-      ownerReplyText: postedText?.trim() || null,
+      ownerReplyText: normalizedPostedText,
       ownerReplyUpdatedAt: new Date(),
       updatedAt: new Date()
     })
     .where(eq(reviews.id, reviewId))
     .returning();
 
-  return review;
+  return {
+    review: updatedReview,
+    wasNoop: false
+  };
 }
 
 export async function acknowledgeNoReply({
@@ -1130,7 +1344,7 @@ export async function escalateReview({
 }: {
   businessId: number;
   reviewId: number;
-}) {
+}): Promise<ReviewMutationResult> {
   const review = await getBusinessScopedReview(businessId, reviewId);
   if (!review) {
     throw new Error('Review not found');
@@ -1148,13 +1362,27 @@ export async function escalateReview({
     throw new Error('Business owner not found');
   }
 
+  const nextWorkflowStatus =
+    review.workflowStatus === 'posted_manual' || review.workflowStatus === 'closed_no_reply'
+      ? review.workflowStatus
+      : 'needs_attention';
+
+  const isAlreadyEscalated =
+    review.workflowStatus === nextWorkflowStatus &&
+    review.needsAttention === true &&
+    review.assignedUserId === ownerContact.id;
+
+  if (isAlreadyEscalated) {
+    return {
+      review,
+      wasNoop: true
+    };
+  }
+
   const [updatedReview] = await db
     .update(reviews)
     .set({
-      workflowStatus:
-        review.workflowStatus === 'posted_manual' || review.workflowStatus === 'closed_no_reply'
-          ? review.workflowStatus
-          : 'needs_attention',
+      workflowStatus: nextWorkflowStatus,
       needsAttention: true,
       assignedUserId: ownerContact.id,
       escalatedAt: new Date(),
@@ -1163,7 +1391,10 @@ export async function escalateReview({
     .where(eq(reviews.id, reviewId))
     .returning();
 
-  return updatedReview;
+  return {
+    review: updatedReview,
+    wasNoop: false
+  };
 }
 
 export async function getReviewAnalytics(businessId: number) {

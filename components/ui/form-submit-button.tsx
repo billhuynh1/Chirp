@@ -11,10 +11,14 @@ type FormSubmitButtonProps = {
   children: React.ReactNode;
   pendingText: string;
   successToastMessage?: string;
-  className?: string;
-  variant?: VariantProps<typeof buttonVariants>['variant'];
-  size?: VariantProps<typeof buttonVariants>['size'];
-};
+} & Omit<
+  React.ComponentProps<typeof Button>,
+  'type' | 'isLoading' | 'loadingText' | 'children' | 'variant' | 'size' | 'className'
+> & {
+    className?: string;
+    variant?: VariantProps<typeof buttonVariants>['variant'];
+    size?: VariantProps<typeof buttonVariants>['size'];
+  };
 
 export function FormSubmitButton({
   children,
@@ -22,31 +26,44 @@ export function FormSubmitButton({
   successToastMessage,
   className,
   variant,
-  size
+  size,
+  onClick,
+  ...buttonProps
 }: FormSubmitButtonProps) {
   const { pending } = useFormStatus();
   const router = useRouter();
   const { toast } = useToast();
   const wasPendingRef = useRef(false);
+  const isClickedSubmitterRef = useRef(false);
+
+  const isLoading = pending && isClickedSubmitterRef.current;
 
   useEffect(() => {
-    if (pending) {
+    if (isLoading) {
       wasPendingRef.current = true;
       return;
     }
 
+    if (pending) {
+      return;
+    }
+
     if (!wasPendingRef.current || !successToastMessage) {
+      if (!pending) {
+        isClickedSubmitterRef.current = false;
+      }
       return;
     }
 
     wasPendingRef.current = false;
+    isClickedSubmitterRef.current = false;
     toast({
       title: successToastMessage,
       variant: 'success',
       durationMs: 2800
     });
     router.refresh();
-  }, [pending, router, successToastMessage, toast]);
+  }, [isLoading, pending, router, successToastMessage, toast]);
 
   return (
     <Button
@@ -54,8 +71,13 @@ export function FormSubmitButton({
       className={className}
       variant={variant}
       size={size}
-      isLoading={pending}
+      isLoading={isLoading}
       loadingText={pendingText}
+      onClick={(event) => {
+        isClickedSubmitterRef.current = true;
+        onClick?.(event);
+      }}
+      {...buttonProps}
     >
       {children}
     </Button>

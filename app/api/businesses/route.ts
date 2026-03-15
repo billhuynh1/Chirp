@@ -1,14 +1,31 @@
-import { getCurrentWorkspace } from '@/lib/db/queries';
 import { updateBusinessProfile } from '@/lib/services/businesses';
+import {
+  parseJsonBody,
+  requireWorkspaceForMutation
+} from '@/lib/auth/mutation-guards';
+import { updateBusinessProfileMutationSchema } from '@/lib/validation/mutations';
 
 export async function POST(request: Request) {
-  const workspace = await getCurrentWorkspace();
-  if (!workspace?.business) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const workspaceResult = await requireWorkspaceForMutation(request, {
+    ownerOnly: true,
+    targetEntityType: 'business'
+  });
+  if (!workspaceResult.ok) {
+    return workspaceResult.response;
+  }
+  const workspace = workspaceResult.workspace;
+
+  const bodyResult = await parseJsonBody(request, updateBusinessProfileMutationSchema, {
+    telemetry: {
+      workspace,
+      targetEntityType: 'business',
+      targetEntityId: workspace.business.id
+    }
+  });
+  if (!bodyResult.ok) {
+    return bodyResult.response;
   }
 
-  const body = await request.json();
-  const business = await updateBusinessProfile(workspace.business.id, body);
+  const business = await updateBusinessProfile(workspace.business.id, bodyResult.data);
   return Response.json({ business });
 }
-

@@ -1,17 +1,21 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { getCurrentWorkspace } from '@/lib/db/queries';
 import {
   buildGoogleOAuthUrl,
   createGoogleOAuthState
 } from '@/lib/services/integrations/google';
 import { getEnv, isExternalServicesMocked, requireEnv } from '@/lib/env';
+import { requireWorkspaceForMutation } from '@/lib/auth/mutation-guards';
 
-export async function POST() {
-  const workspace = await getCurrentWorkspace();
-  if (!workspace?.business) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+export async function POST(request: Request) {
+  const workspaceResult = await requireWorkspaceForMutation(request, {
+    ownerOnly: true,
+    targetEntityType: 'integration'
+  });
+  if (!workspaceResult.ok) {
+    return workspaceResult.response;
   }
+  const workspace = workspaceResult.workspace;
 
   const state = createGoogleOAuthState();
   const cookieStore = await cookies();
