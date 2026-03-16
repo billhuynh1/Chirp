@@ -43,7 +43,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const googleAuthHref = `/api/auth/google/start?mode=${mode}`;
 
   return (
-    <div className="grid min-h-[100dvh] bg-background lg:grid-cols-[1.05fr_0.95fr]">
+    <div className="grid min-h-[100dvh] bg-[#f8fafc] text-slate-950 lg:grid-cols-[1.05fr_0.95fr]">
       <div className="hidden border-r border-black/10 bg-[#1f2a2a] p-10 text-white lg:flex lg:flex-col lg:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.24em] text-[#efb49f]">
@@ -54,8 +54,9 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
             Reply to Google reviews faster without taking on unnecessary risk.
           </h1>
           <p className="mt-6 max-w-lg text-sm leading-7 text-slate-300">
-            Built for plumbing businesses that need a simple review inbox, safe
-            AI drafts, and fast alerts when a negative review needs attention.
+            Built for home service businesses that need a simple review inbox,
+            safe AI drafts, and fast alerts when a negative review needs
+            attention.
           </p>
         </div>
         <div className="space-y-3 text-sm text-slate-300">
@@ -83,12 +84,12 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="rounded-[2rem] border border-border/70 bg-card/90 p-8 shadow-xl shadow-black/5">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl shadow-black/5">
             <div className="space-y-6">
               <Button
                 asChild
                 variant="outline"
-                className="h-11 w-full rounded-2xl border-border/70 bg-background text-slate-900 hover:bg-muted/40"
+                className="h-11 w-full rounded-2xl border-slate-200 bg-white text-slate-900 hover:bg-slate-100 dark:border-slate-200 dark:bg-white dark:hover:bg-slate-100"
               >
                 <Link href={googleAuthHref}>
                   <GoogleIcon />
@@ -97,9 +98,9 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               </Button>
 
               <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.24em] text-slate-400">
-                <div className="h-px flex-1 bg-border/70" />
+                <div className="h-px flex-1 bg-slate-200" />
                 <span>Or with email</span>
-                <div className="h-px flex-1 bg-border/70" />
+                <div className="h-px flex-1 bg-slate-200" />
               </div>
 
               <form className="space-y-6" action={formAction}>
@@ -116,7 +117,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                       defaultValue={state.email}
                       required
                       maxLength={50}
-                      className="h-11 rounded-2xl border-border/70 bg-background"
+                      className="h-11 rounded-2xl border-slate-200 bg-white dark:border-slate-200 dark:bg-white"
                       placeholder="owner@yourbusiness.com"
                     />
                   </div>
@@ -137,7 +138,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
                       required
                       minLength={8}
                       maxLength={100}
-                      className="h-11 rounded-2xl border-border/70 bg-background"
+                      className="h-11 rounded-2xl border-slate-200 bg-white dark:border-slate-200 dark:bg-white"
                       placeholder="Minimum 8 characters"
                     />
                   </div>
@@ -168,7 +169,7 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               </form>
             </div>
 
-            <div className="mt-6 border-t border-border/70 pt-6 text-center text-sm text-slate-600">
+            <div className="mt-6 border-t border-slate-200 pt-6 text-center text-sm text-slate-600">
               {mode === 'signin'
                 ? 'New to Chirp?'
                 : 'Already have an account?'}{' '}
