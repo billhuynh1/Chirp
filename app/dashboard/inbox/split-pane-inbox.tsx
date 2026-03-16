@@ -29,8 +29,10 @@ export type MockReview = {
   finalPostedText?: string;
 };
 
-type FilterType = 'all' | 'needs_reply' | 'replied' | 'urgent';
+type FilterType = 'active' | 'completed' | 'urgent';
 type SortType = 'urgency' | 'newest' | 'rating_high' | 'rating_low';
+
+const FILTER_OPTIONS: FilterType[] = ['active', 'completed', 'urgent'];
 
 export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[] }) {
   const { toast } = useToast();
@@ -39,7 +41,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
   const [reviews, setReviews] = useState<MockReview[]>(initialReviews);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
+  const [filter, setFilter] = useState<FilterType>('active');
   const [sort, setSort] = useState<SortType>('urgency');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -60,16 +62,19 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
 
     // Filter
     switch (filter) {
-      case 'needs_reply':
+      case 'active':
         result = result.filter((r) => r.status !== 'completed');
         break;
-      case 'replied':
+      case 'completed':
         result = result.filter((r) => r.status === 'completed');
         break;
       case 'urgent':
-        result = result.filter((r) => r.urgency === 'urgent' || r.urgency === 'high');
+        result = result.filter(
+          (r) =>
+            (r.urgency === 'urgent' || r.urgency === 'high') &&
+            r.status !== 'completed'
+        );
         break;
-      case 'all':
       default:
         break;
     }
@@ -151,8 +156,6 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
 
     // Auto-advance logic on the updated dataset
     // Re-evaluate what the "next" highest priority is
-    const targetStatusFilter = 'completed';
-    // Let's find pending reviews (not completed) that are NOT the current one (it might still briefly be in filteredReviews if filter is "all")
     const pendingReviews = updatedReviews.filter(r => r.status !== 'completed');
     
     let nextReview = null;
@@ -340,6 +343,25 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
     }
   }
 
+  function getFilterLabel(filterValue: FilterType) {
+    switch (filterValue) {
+      case 'active':
+        return 'Active';
+      case 'completed':
+        return 'Completed';
+      case 'urgent':
+        return 'Urgent';
+    }
+  }
+
+  function getEmptyListMessage() {
+    if (filter === 'completed') {
+      return 'No completed reviews yet.';
+    }
+
+    return 'No actionable reviews match your current filter.';
+  }
+
   return (
     <div className="flex h-full flex-col lg:flex-row gap-6">
       {/* LEFT PANEL: LIST */}
@@ -355,9 +377,13 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
               className="rounded-full pl-9"
             />
           </div>
+
+          <p className="text-xs leading-5 text-muted-foreground">
+            Inbox shows reviews that still need action. Completed work lives under the Completed filter.
+          </p>
           
           <div className="flex flex-wrap gap-2">
-            {(['all', 'needs_reply', 'replied', 'urgent'] as FilterType[]).map((f) => (
+            {FILTER_OPTIONS.map((f) => (
               <Button
                 key={f}
                 variant={filter === f ? 'default' : 'outline'}
@@ -365,7 +391,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
                 className="rounded-full h-7 text-xs px-3"
                 onClick={() => setFilter(f)}
               >
-                {humanizeToken(f)}
+                {getFilterLabel(f)}
               </Button>
             ))}
           </div>
@@ -389,7 +415,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
         <div className="flex-1 overflow-y-auto p-2 space-y-3 pb-8 custom-scrollbar">
           {filteredReviews.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground text-sm bg-muted/30 rounded-[1.5rem]">
-              No reviews match your filters.
+              {getEmptyListMessage()}
             </div>
           ) : (
             filteredReviews.map((r) => {

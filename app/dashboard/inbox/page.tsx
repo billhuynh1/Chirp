@@ -95,7 +95,12 @@ export default async function InboxPage({
   return (
     <section className="flex flex-col h-[calc(100dvh-5.5rem)] sm:h-[calc(100dvh-6.5rem)] lg:h-[calc(100dvh-7.5rem)] gap-2">
       <div className="flex items-center justify-between shrink-0 mb-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Reviews Inbox</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Reviews Inbox</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Active reviews stay front and center. Completed items are available under the Completed filter in list view.
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           {focusQueueEnabled ? (
             <Button
