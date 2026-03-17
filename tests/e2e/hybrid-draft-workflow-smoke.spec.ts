@@ -220,11 +220,13 @@ test('smoke: draft mode setup/settings and review generate/no-reply states', asy
     }
     await route.continue();
   });
-  await page.locator('#focusQueueEnabled').selectOption('true');
-  await page.locator('#draftGenerationMode').selectOption('hybrid_risk_gated');
+  await page.locator('#focusQueueEnabled').click();
+  await page.getByRole('menuitemradio', { name: 'Enabled' }).click();
+  await page.locator('#draftGenerationMode').click();
+  await page.getByRole('menuitemradio', { name: 'Hybrid risk-gated' }).click();
   await page.getByRole('button', { name: 'Save settings' }).click();
   await expect(page.getByRole('button', { name: 'Saving settings...' })).toBeVisible();
-  await expect(page.locator('#focusQueueEnabled')).toHaveValue('true');
+  await expect(page.locator('input[name=\"focusQueueEnabled\"]')).toHaveValue('true');
 
   const reviewId = await createReviewFixture(email);
 
