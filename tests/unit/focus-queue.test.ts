@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  pickFocusQueueCandidate,
   resolveFocusQueueAction,
   shouldEscalateAfterAnalysis,
   sortFocusQueueCandidates
@@ -66,6 +67,32 @@ test('sorts by urgency, then workflow, then oldest created review', () => {
     sorted.map((item) => item.id),
     [3, 2, 1]
   );
+});
+
+test('keeps a preferred actionable review selected after queue refresh', () => {
+  const selected = pickFocusQueueCandidate(
+    [
+      {
+        id: 1,
+        workflowStatus: 'draft_ready',
+        starRating: 5,
+        reviewCreatedAt: new Date('2026-02-01T00:00:00Z'),
+        latestDraft: { id: 501 },
+        latestAnalysis: { urgency: 'medium' }
+      },
+      {
+        id: 2,
+        workflowStatus: 'analyzed',
+        starRating: 4,
+        reviewCreatedAt: new Date('2026-01-01T00:00:00Z'),
+        latestAnalysis: { urgency: 'medium' }
+      }
+    ],
+    null,
+    1
+  );
+
+  assert.equal(selected?.id, 1);
 });
 
 test('resolves no-reply items to acknowledge action', () => {

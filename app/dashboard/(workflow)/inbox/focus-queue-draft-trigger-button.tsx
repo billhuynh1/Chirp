@@ -155,6 +155,7 @@ export function FocusQueueDraftTriggerButton({
       });
 
       const nextQuery = new URLSearchParams(searchParams.toString());
+      nextQuery.set('pin', String(reviewId));
       nextQuery.set('refresh', String(Date.now()));
       const nextHref = `${pathname}?${nextQuery.toString()}`;
       router.replace(nextHref, { scroll: false });

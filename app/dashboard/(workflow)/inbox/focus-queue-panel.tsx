@@ -145,6 +145,7 @@ function ActionHub({
   const draft = review.latestDraft;
   const isSkipReply = review.latestAnalysis?.actionRecommendation === 'skip_reply';
   const skipHref = buildSkipHref(review.id, skippedReviewIds);
+  const canSkip = item.nextAction !== 'mark_posted';
 
   return (
     <aside className="h-fit space-y-3 rounded-[1rem] border border-border/70 bg-muted/30 p-4">
@@ -156,13 +157,15 @@ function ActionHub({
       </div>
       <div className="grid gap-2">
         <PrimaryAction item={item} />
-        <Button
-          asChild
-          variant="ghost"
-          className="w-full justify-center rounded-full text-muted-foreground hover:text-foreground"
-        >
-          <Link href={skipHref}>Skip</Link>
-        </Button>
+        {canSkip ? (
+          <Button
+            asChild
+            variant="ghost"
+            className="w-full justify-center rounded-full text-muted-foreground hover:text-foreground"
+          >
+            <Link href={skipHref}>Skip</Link>
+          </Button>
+        ) : null}
         {draft && !isSkipReply ? (
           <FocusQueueDraftTriggerButton
             reviewId={review.id}

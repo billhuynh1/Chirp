@@ -41,6 +41,10 @@ export default async function InboxPage({
   const requestedView =
     typeof params.view === 'string' && params.view === 'list' ? 'list' : 'focus';
   const skippedReviewIds = parseSkippedReviewIds(params.skip);
+  const preferredReviewId =
+    typeof params.pin === 'string' && Number.isInteger(Number(params.pin)) && Number(params.pin) > 0
+      ? Number(params.pin)
+      : null;
   const focusQueueEnabled = workspace.settings?.focusQueueEnabled ?? false;
   const activeView = focusQueueEnabled ? requestedView : 'list';
 
@@ -49,7 +53,8 @@ export default async function InboxPage({
     listBusinessReviews(workspace.business.id),
     focusQueueEnabled
       ? getFocusQueueReview(workspace.business.id, {
-          excludeReviewIds: skippedReviewIds
+          excludeReviewIds: skippedReviewIds,
+          preferredReviewId
         })
       : Promise.resolve(null)
   ]);

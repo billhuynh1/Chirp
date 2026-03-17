@@ -129,6 +129,27 @@ export function sortFocusQueueCandidates(
     });
 }
 
+export function pickFocusQueueCandidate(
+  candidates: FocusQueueCandidate[],
+  ownerUserId: number | null,
+  preferredReviewId?: number | null
+) {
+  const sorted = sortFocusQueueCandidates(candidates, ownerUserId);
+  if (!sorted.length) {
+    return null;
+  }
+
+  if (!preferredReviewId) {
+    return sorted[0] ?? null;
+  }
+
+  return (
+    sorted.find((candidate) => candidate.id === preferredReviewId) ??
+    sorted[0] ??
+    null
+  );
+}
+
 export function resolveFocusQueueAction(
   candidate: FocusQueueCandidate
 ): FocusQueueResolution {

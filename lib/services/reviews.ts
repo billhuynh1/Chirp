@@ -45,6 +45,7 @@ import {
 } from '@/lib/services/reviews/draft-generation-policy';
 import { AbuseProtectionError } from '@/lib/services/reviews/abuse-protection';
 import {
+  pickFocusQueueCandidate,
   resolveFocusQueueAction,
   shouldEscalateAfterAnalysis,
   sortFocusQueueCandidates,
@@ -96,6 +97,7 @@ export type FocusQueueReview = {
 
 type FocusQueueOptions = {
   excludeReviewIds?: number[];
+  preferredReviewId?: number | null;
 };
 
 export class ReviewMutationAccessError extends Error {
@@ -669,8 +671,11 @@ export async function getFocusQueueReview(
 
   const records = await buildReviewRecords(eligibleCandidates);
   const owner = await getBusinessOwnerContact(business.teamId);
-  const sorted = sortFocusQueueCandidates(records, owner?.id ?? null);
-  const topCandidate = sorted[0];
+  const topCandidate = pickFocusQueueCandidate(
+    records,
+    owner?.id ?? null,
+    options.preferredReviewId
+  );
 
   if (!topCandidate) {
     return null;
