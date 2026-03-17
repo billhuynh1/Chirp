@@ -6,7 +6,7 @@ import { ToastProvider } from '@/components/ui/toast';
 export const metadata: Metadata = {
   title: 'Chirp | AI Review Assistant',
   description:
-    'AI review assistant for plumbing and home service businesses using Google Business Profile.'
+    'AI review assistant for home service businesses using Google Business Profile.'
 };
 
 export const viewport: Viewport = {

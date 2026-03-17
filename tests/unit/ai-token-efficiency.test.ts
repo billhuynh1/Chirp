@@ -133,19 +133,23 @@ test('analysis prompt payload is compact and raw output captures usage/model met
     }
   });
 
-  const result = await analyzeReviewWithAI(createReview());
+  const result = await analyzeReviewWithAI(createReview(), { vertical: 'electrical' });
 
   const messages = requestBody?.messages as Array<{ content: string }>;
+  const systemPrompt = messages[0]?.content ?? '';
   const userPayload = JSON.parse(messages[1]?.content ?? '{}');
 
   assert.equal(typeof userPayload.expectedShape, 'undefined');
+  assert.equal(userPayload.vertical, 'electrical');
   assert.equal(userPayload.rating, 5);
   assert.equal(userPayload.reviewText, 'Great team. Fast fix and clean work.');
   assert.equal(Array.isArray(userPayload.allowedIssueTags), true);
+  assert.equal(systemPrompt.includes('home services industry'), true);
+  assert.equal(systemPrompt.includes('plumbing business.'), false);
 
   assert.equal(result.modelName, 'gpt-4o-mini-2026-01-01');
   assert.equal(result.rawOutput.source, 'openai');
-  assert.equal(result.rawOutput.promptVersion, 'analysis-v3-compact-offtopic-gate');
+  assert.equal(result.rawOutput.promptVersion, 'analysis-v4-service-aware');
   assert.deepEqual(result.rawOutput.usage, {
     promptTokens: 90,
     completionTokens: 30,
@@ -202,7 +206,10 @@ test('draft prompt omits empty/default optional fields and stores generation met
   });
 
   const review = createReview();
-  const business = createBusiness();
+  const business = createBusiness({
+    name: 'QuickFix HVAC',
+    vertical: 'hvac'
+  });
   const settings = createSettings();
 
   const result = await generateReplyDraftWithAI({
@@ -224,6 +231,7 @@ test('draft prompt omits empty/default optional fields and stores generation met
   });
 
   const messages = requestBody?.messages as Array<{ content: string }>;
+  const systemPrompt = messages[0]?.content ?? '';
   const userPayload = JSON.parse(messages[1]?.content ?? '{}');
 
   assert.equal(typeof userPayload.allowedPromises, 'undefined');
@@ -231,11 +239,14 @@ test('draft prompt omits empty/default optional fields and stores generation met
   assert.equal(typeof userPayload.issueTags, 'undefined');
   assert.equal(typeof userPayload.brandVoice, 'undefined');
   assert.equal(typeof userPayload.escalationMessage, 'undefined');
+  assert.equal(userPayload.vertical, 'hvac');
+  assert.equal(systemPrompt.includes('home services industry'), true);
+  assert.equal(systemPrompt.includes('plumbing businesses.'), false);
 
   assert.equal(result.modelName, 'gpt-4o-mini-2026-02-01');
   assert.deepEqual(result.generationMetadata, {
     source: 'openai',
-    promptVersion: 'draft-v3-compact-personalized',
+    promptVersion: 'draft-v4-service-aware',
     modelName: 'gpt-4o-mini-2026-02-01',
     usage: {
       promptTokens: 70,

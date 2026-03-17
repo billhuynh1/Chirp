@@ -12,6 +12,10 @@ import type {
   ReviewAnalysis
 } from '@/lib/db/schema';
 import { getEnv } from '@/lib/env';
+import {
+  getServiceDisplayLabel,
+  normalizeServiceValue
+} from '@/lib/validation/business-profile';
 
 export type AnalysisResult = {
   sentiment: 'positive' | 'neutral' | 'negative' | 'mixed' | 'rating_only';
@@ -82,8 +86,8 @@ class OpenAIRequestError extends Error {
   }
 }
 
-const ANALYSIS_PROMPT_VERSION = 'analysis-v3-compact-offtopic-gate';
-const DRAFT_PROMPT_VERSION = 'draft-v3-compact-personalized';
+const ANALYSIS_PROMPT_VERSION = 'analysis-v4-service-aware';
+const DRAFT_PROMPT_VERSION = 'draft-v4-service-aware';
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 const DEFAULT_BRAND_VOICE = 'Helpful, calm, and professional.';
 const DEFAULT_ESCALATION_MESSAGE = 'Please contact our office so we can review the details directly.';
@@ -587,8 +591,22 @@ function ensureSignoff(draftText: string, signoffName: string) {
   return `${trimmedDraft}\n\n${normalizedSignoff}`;
 }
 
-function buildAnalysisPromptPayload(review: Review) {
+function resolveServicePromptContext(vertical: string | null | undefined) {
+  const normalizedVertical = normalizeServiceValue(vertical);
   return {
+    vertical: normalizedVertical ?? 'home_service',
+    displayLabel: getServiceDisplayLabel(normalizedVertical) || 'home service'
+  };
+}
+
+function buildAnalysisPromptPayload(
+  review: Review,
+  vertical: string | null | undefined
+) {
+  const serviceContext = resolveServicePromptContext(vertical);
+
+  return {
+    vertical: serviceContext.vertical,
     rating: review.starRating,
     reviewText: review.reviewText,
     allowedIssueTags: Object.keys(ISSUE_TAG_PATTERNS)
@@ -606,8 +624,10 @@ function buildDraftPromptPayload({
   settings: BusinessSettings;
   analysis: AnalysisResult | ReviewAnalysis;
 }) {
+  const serviceContext = resolveServicePromptContext(business.vertical);
   const payload: Record<string, unknown> = {
     businessName: business.name,
+    vertical: serviceContext.vertical,
     rating: review.starRating,
     reviewText: review.reviewText,
     summary: analysis.summary,
@@ -655,7 +675,10 @@ function buildDraftPromptPayload({
   return payload;
 }
 
-export async function analyzeReviewWithAI(review: Review) {
+export async function analyzeReviewWithAI(
+  review: Review,
+  options: { vertical?: string | null } = {}
+) {
   const fallbackBase = buildFallbackAnalysis(review);
   const fallback = applyOffTopicSpamOverride(review, fallbackBase);
   if (!getEnv('OPENAI_API_KEY') || !review.reviewText) {
@@ -663,16 +686,18 @@ export async function analyzeReviewWithAI(review: Review) {
   }
 
   try {
+    const serviceContext = resolveServicePromptContext(options.vertical);
     const result = await fetchOpenAIJson<AnalysisResult>([
       {
         role: 'system',
         content:
           [
-            'You classify customer reviews for a plumbing business.',
+            `You classify customer reviews for a ${serviceContext.displayLabel} business in the home services industry.`,
             'Return valid JSON only with keys: sentiment, urgency, riskLevel, issueTags, summary, actionRecommendation, confidence, requiresManualReview.',
             'Allowed sentiment: positive|neutral|negative|mixed|rating_only.',
             'Allowed urgency/riskLevel: low|medium|high|critical.',
             'Allowed actionRecommendation: publish_safe_reply|owner_review_required|owner_review_and_offline_resolution|skip_reply.',
+            'Use the provided vertical to tailor terminology lightly while keeping the same shared workflow and safety rules.',
             'If content is off-topic or promotional spam (including coding/homework requests), return actionRecommendation=skip_reply and include issueTags containing off_topic_spam.',
             'Confidence must be an integer 0-100.',
             'Never invent facts.'
@@ -680,7 +705,7 @@ export async function analyzeReviewWithAI(review: Review) {
       },
       {
         role: 'user',
-        content: JSON.stringify(buildAnalysisPromptPayload(review))
+        content: JSON.stringify(buildAnalysisPromptPayload(review, options.vertical))
       }
     ]);
 
@@ -740,6 +765,7 @@ export async function generateReplyDraftWithAI({
   }
 
   try {
+    const serviceContext = resolveServicePromptContext(business.vertical);
     const result = await fetchOpenAIJson<{
       draftText: string;
       tone: string;
@@ -750,9 +776,10 @@ export async function generateReplyDraftWithAI({
         role: 'system',
         content:
           [
-            'You write safe review replies for plumbing businesses.',
+            `You write safe review replies for ${serviceContext.displayLabel} businesses in the home services industry.`,
             'Return valid JSON only with keys: draftText, tone, ctaType, safetyNotes.',
             'Allowed ctaType: none|offline_contact|follow_up.',
+            'Use the provided vertical to tailor terminology lightly while keeping the same shared workflow and safety rules.',
             'Use natural, human wording and avoid robotic phrasing.',
             'If customerFirstName is provided, address the customer by first name once.',
             'Do not invent facts, admit liability, promise refunds, or mention compensation unless explicitly provided.'

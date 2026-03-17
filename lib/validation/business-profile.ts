@@ -1,10 +1,28 @@
-export const ACTIVE_SERVICE_VALUES = ['plumbing'] as const;
+export const ACTIVE_SERVICE_VALUES = [
+  'plumbing',
+  'hvac',
+  'electrical',
+  'roofing'
+] as const;
 
-export const COMING_SOON_SERVICE_LABELS = ['HVAC', 'Electrical', 'Roofing'] as const;
+export const COMING_SOON_SERVICE_LABELS = [] as const;
+
+export const SERVICE_LABELS = {
+  plumbing: 'Plumbing',
+  hvac: 'HVAC',
+  electrical: 'Electrical',
+  roofing: 'Roofing'
+} as const;
 
 const SERVICE_ALIASES = {
   plumbing: 'plumbing',
-  plumber: 'plumbing'
+  plumber: 'plumbing',
+  hvac: 'hvac',
+  'heating and cooling': 'hvac',
+  electrical: 'electrical',
+  electrician: 'electrical',
+  roofing: 'roofing',
+  roofer: 'roofing'
 } as const;
 
 export const ALLOWED_TIMEZONE_VALUES = [
@@ -29,6 +47,15 @@ export function normalizeServiceValue(input: string | null | undefined) {
 
   const normalized = input.trim().toLowerCase();
   return SERVICE_ALIASES[normalized as keyof typeof SERVICE_ALIASES] ?? null;
+}
+
+export function getServiceDisplayLabel(input: string | null | undefined) {
+  const normalized = normalizeServiceValue(input);
+  if (!normalized) {
+    return '';
+  }
+
+  return SERVICE_LABELS[normalized];
 }
 
 export function normalizeTimezoneValue(input: string | null | undefined) {

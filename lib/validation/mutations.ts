@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeServiceValue } from '@/lib/validation/business-profile';
 
 const positiveIntSchema = z.coerce.number().int().positive();
 
@@ -30,7 +31,16 @@ export const updateBusinessProfileMutationSchema = nonEmptyUpdate(
   z
     .object({
       name: z.string().trim().min(2).max(160).optional(),
-      vertical: z.string().trim().min(1).max(80).optional(),
+      vertical: z
+        .string()
+        .trim()
+        .min(1)
+        .max(80)
+        .refine((value) => normalizeServiceValue(value) !== null, {
+          message: 'Service must be one of the supported home service categories.'
+        })
+        .transform((value) => normalizeServiceValue(value)!)
+        .optional(),
       primaryPhone: z.string().trim().max(40).optional().nullable(),
       website: z.string().trim().max(255).optional().nullable(),
       timezone: z.string().trim().min(2).max(80).optional(),

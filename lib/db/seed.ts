@@ -33,7 +33,7 @@ async function seed() {
   await createDefaultBusiness({
     teamId: team.id,
     ownerEmail: email,
-    defaultName: 'Chirp Plumbing Demo'
+    defaultName: 'Chirp Home Services Demo'
   });
 }
 

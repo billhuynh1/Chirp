@@ -185,7 +185,7 @@ export async function saveBusinessProfileAction(
         workspace.business.id,
         'business-profile',
         'invalid-service',
-        'Service is invalid. Use plumbing for now.'
+        'Service is invalid. Choose Plumbing, HVAC, Electrical, or Roofing.'
       );
     }
     redirect('/dashboard/setup?error=invalid-service');

@@ -79,7 +79,7 @@ export async function createWorkspaceForUser(input: CreateWorkspaceForUserInput)
   await createDefaultBusiness({
     teamId: createdTeam.id,
     ownerEmail: input.email,
-    defaultName: 'Your Plumbing Business'
+    defaultName: 'Your Home Service Business'
   });
 
   return { user: createdUser, team: createdTeam };

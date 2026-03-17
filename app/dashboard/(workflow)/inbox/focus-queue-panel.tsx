@@ -11,8 +11,9 @@ import {
   markPostedAction,
   rejectDraftAction
 } from '@/app/dashboard/actions';
-import { FocusQueueDraftEditor } from '@/app/dashboard/inbox/focus-queue-draft-editor';
-import { FocusQueueDraftTriggerButton } from '@/app/dashboard/inbox/focus-queue-draft-trigger-button';
+import { FocusQueueDraftEditor } from './focus-queue-draft-editor';
+import { FocusQueueDraftTriggerButton } from './focus-queue-draft-trigger-button';
+import { cn } from '@/lib/utils';
 
 function humanizeToken(value?: string | null, fallback = 'Pending') {
   if (!value) {
@@ -46,6 +47,7 @@ function PrimaryAction({ item }: { item: FocusQueueReview }) {
         mode="generate"
         label="Generate draft"
         pendingText="Generating..."
+        riskLevel={item.review.latestAnalysis?.riskLevel}
         className="w-full justify-center rounded-full"
       />
     );
@@ -60,6 +62,7 @@ function PrimaryAction({ item }: { item: FocusQueueReview }) {
         mode="regenerate"
         label="Regenerate draft"
         pendingText="Regenerating..."
+        riskLevel={item.review.latestAnalysis?.riskLevel}
         className="w-full justify-center rounded-full"
       />
     );
@@ -100,6 +103,37 @@ function buildSkipHref(reviewId: number, skippedReviewIds: number[]) {
   return `/dashboard/inbox?view=focus&skip=${[...nextSkipped].join(',')}`;
 }
 
+function getRecommendationAccentClasses(recommendation?: string | null) {
+  if (
+    recommendation === 'owner_review_required' ||
+    recommendation === 'owner_review_and_offline_resolution'
+  ) {
+    return {
+      panel: 'border-danger/25 bg-danger/8',
+      text: 'text-danger'
+    };
+  }
+
+  if (recommendation === 'skip_reply') {
+    return {
+      panel: 'border-warning/25 bg-warning/10',
+      text: 'text-warning'
+    };
+  }
+
+  if (recommendation === 'publish_safe_reply') {
+    return {
+      panel: 'border-success/25 bg-success/10',
+      text: 'text-success'
+    };
+  }
+
+  return {
+    panel: 'border-border/70 bg-muted/30',
+    text: 'text-foreground'
+  };
+}
+
 function ActionHub({
   item,
   skippedReviewIds
@@ -114,10 +148,19 @@ function ActionHub({
 
   return (
     <aside className="h-fit space-y-3 rounded-[1rem] border border-border/70 bg-muted/30 p-4">
-      <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Actions</p>
+      <div className="space-y-1">
+        <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Actions</p>
+        <p className="text-sm font-medium text-foreground">
+          {humanizeToken(item.nextAction, 'Review next step')}
+        </p>
+      </div>
       <div className="grid gap-2">
         <PrimaryAction item={item} />
-        <Button asChild variant="ghost" className="w-full justify-center rounded-full">
+        <Button
+          asChild
+          variant="ghost"
+          className="w-full justify-center rounded-full text-muted-foreground hover:text-foreground"
+        >
           <Link href={skipHref}>Skip</Link>
         </Button>
         {draft && !isSkipReply ? (
@@ -128,6 +171,7 @@ function ActionHub({
             mode="regenerate"
             label="Regenerate"
             pendingText="Regenerating..."
+            riskLevel={review.latestAnalysis?.riskLevel}
             variant="outline"
             className="w-full justify-center rounded-full"
           />
@@ -138,7 +182,7 @@ function ActionHub({
             <input type="hidden" name="draftId" value={draft.id} />
             <input type="hidden" name="reason" value="Rejected from Focus Queue" />
             <FormSubmitButton
-              variant="outline"
+              variant="destructive"
               className="w-full justify-center rounded-full"
               pendingText="Rejecting..."
             >
@@ -149,14 +193,18 @@ function ActionHub({
         <form action={escalateReviewAction}>
           <input type="hidden" name="reviewId" value={review.id} />
           <FormSubmitButton
-            variant="outline"
+            variant="secondary"
             className="w-full justify-center rounded-full"
             pendingText="Escalating..."
           >
             Escalate / Assign owner
           </FormSubmitButton>
         </form>
-        <Button asChild variant="secondary" className="w-full justify-center rounded-full">
+        <Button
+          asChild
+          variant="outline"
+          className="w-full justify-center rounded-full border-border/80 bg-background/80"
+        >
           <Link href={`/dashboard/reviews/${review.id}`}>Open full review</Link>
         </Button>
       </div>
@@ -194,10 +242,13 @@ export function FocusQueuePanel({
   const analysis = review.latestAnalysis;
   const draft = review.latestDraft;
   const isSkipReply = analysis?.actionRecommendation === 'skip_reply';
+  const recommendationAccent = getRecommendationAccentClasses(
+    analysis?.actionRecommendation
+  );
 
   return (
     <Card className="h-full bg-card shadow-none">
-      <CardContent className="p-4 sm:p-6">
+      <CardContent className="px-4 pb-4 pt-2 sm:px-6 sm:pb-6 sm:pt-3">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -215,11 +266,11 @@ export function FocusQueuePanel({
               </p>
             </div>
 
-            <div className="rounded-[1rem] border border-border/70 bg-muted/30 p-4">
+            <div className={cn('rounded-[1rem] border p-4', recommendationAccent.panel)}>
               <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                 Recommendation
               </p>
-              <p className="mt-2 text-sm font-medium text-foreground">
+              <p className={cn('mt-2 text-sm font-medium', recommendationAccent.text)}>
                 {humanizeToken(analysis?.actionRecommendation)}
               </p>
               <p className="mt-3 text-xs uppercase tracking-[0.14em] text-muted-foreground">
@@ -231,7 +282,7 @@ export function FocusQueuePanel({
             </div>
 
             {isSkipReply ? (
-              <div className="rounded-[1rem] border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              <div className="rounded-[1rem] border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
                 No public reply recommended for this review.
               </div>
             ) : null}

@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Search, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { RatingBadge, ReviewStatusBadge, UrgencyBadge } from '@/components/reviews/review-badges';
+import { isCriticalRiskReview } from './critical-risk-draft-confirmation';
+import { CriticalRiskDraftDialog } from './critical-risk-draft-dialog';
 
 export type MockReview = {
   id: string;
@@ -45,6 +47,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
   const [sort, setSort] = useState<SortType>('urgency');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isCriticalRiskDialogOpen, setIsCriticalRiskDialogOpen] = useState(false);
 
   // Derived filtered & sorted reviews
   const filteredReviews = useMemo(() => {
@@ -187,7 +190,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
     }
   };
 
-  const handleRegenerateDraft = async () => {
+  const runRegenerateDraft = async () => {
     if (!selectedReview) {
       return;
     }
@@ -267,8 +270,9 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
       let toastDescription = 'A fresh AI draft is now loaded in the editor.';
       if (returnedDraftSource === 'rules') {
         if (returnedDraftReason === 'critical_risk_gate') {
+          toastTitle = 'AI draft blocked by safety gate';
           toastDescription =
-            'Critical risk review: safety gate prevented OpenAI generation and used fallback rules.';
+            'This review was flagged as critical risk, so AI draft generation was blocked. A fallback draft was created for manual review instead.';
         } else if (returnedDraftReason === 'missing_openai_key') {
           toastTitle = 'AI regeneration unavailable';
           toastVariant = 'destructive';
@@ -319,6 +323,19 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
     }
   };
 
+  const handleRegenerateDraft = async () => {
+    if (!selectedReview) {
+      return;
+    }
+
+    if (isCriticalRiskReview(selectedReview.analysis.riskLevel)) {
+      setIsCriticalRiskDialogOpen(true);
+      return;
+    }
+
+    await runRegenerateDraft();
+  };
+
   function humanizeToken(value?: string | null, fallback = 'Pending') {
     if (!value) return fallback;
     const normalized = value.replaceAll('_', ' ');
@@ -363,9 +380,10 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
   }
 
   return (
-    <div className="flex h-full flex-col lg:flex-row gap-6">
-      {/* LEFT PANEL: LIST */}
-      <div className="flex w-full flex-col gap-4 lg:w-1/3 xl:w-[400px] 2xl:w-[450px]">
+    <>
+      <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden lg:flex-row">
+        {/* LEFT PANEL: LIST */}
+        <div className="flex min-h-0 w-full flex-col gap-4 lg:w-1/3 xl:w-[400px] 2xl:w-[450px]">
         {/* Filters & Search Header */}
         <div className="flex flex-col gap-3 shrink-0">
           <div className="relative w-full">
@@ -412,7 +430,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
         </div>
 
         {/* List Content */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-3 pb-8 custom-scrollbar">
+        <div className="flex-1 min-h-0 space-y-3 overflow-y-auto p-2 pb-8 custom-scrollbar">
           {filteredReviews.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground text-sm bg-muted/30 rounded-[1.5rem]">
               {getEmptyListMessage()}
@@ -449,8 +467,8 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
         </div>
       </div>
 
-      {/* RIGHT PANEL: DETAIL & ACTIONS */}
-      <div className="flex-1 overflow-y-auto bg-muted/50 rounded-[1.5rem] border-0 shadow-none custom-scrollbar relative">
+        {/* RIGHT PANEL: DETAIL & ACTIONS */}
+        <div className="relative flex-1 min-h-0 overflow-y-auto rounded-[1.5rem] border-0 bg-muted/50 shadow-none custom-scrollbar">
         {!selectedReview ? (
            <div className="flex flex-col items-center justify-center h-full text-muted-foreground w-full p-10">
                <div className="rounded-full bg-muted p-4 mb-4">
@@ -601,8 +619,18 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
              </Card>
           </div>
         )}
+        </div>
       </div>
-
-    </div>
+      <CriticalRiskDraftDialog
+        reviewId={selectedReview?.id ?? ''}
+        mode="regenerate"
+        open={isCriticalRiskDialogOpen}
+        onOpenChange={setIsCriticalRiskDialogOpen}
+        onConfirm={() => {
+          setIsCriticalRiskDialogOpen(false);
+          void runRegenerateDraft();
+        }}
+      />
+    </>
   );
 }

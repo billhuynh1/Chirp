@@ -15,6 +15,7 @@ import {
   ALLOWED_TIMEZONE_VALUES,
   COMING_SOON_SERVICE_LABELS,
   TIMEZONE_SUGGESTION_LABELS,
+  getServiceDisplayLabel,
   isAllowedTimezoneValue,
   normalizeServiceValue,
   normalizeTimezoneValue
@@ -28,7 +29,12 @@ export const ALLOWED_TIMEZONES = [...ALLOWED_TIMEZONE_VALUES];
 
 export const TIMEZONE_SUGGESTIONS = [...TIMEZONE_SUGGESTION_LABELS];
 
-export { normalizeServiceValue, normalizeTimezoneValue, isAllowedTimezoneValue };
+export {
+  getServiceDisplayLabel,
+  normalizeServiceValue,
+  normalizeTimezoneValue,
+  isAllowedTimezoneValue
+};
 
 export async function createDefaultBusiness({
   teamId,
@@ -42,7 +48,7 @@ export async function createDefaultBusiness({
   const newBusiness: NewBusiness = {
     teamId,
     name: defaultName,
-    vertical: 'plumbing',
+    vertical: '',
     reviewContactEmail: ownerEmail,
     timezone: 'America/Los_Angeles',
     status: 'trial'

@@ -13,6 +13,7 @@ import {
   COMING_SOON_SERVICE_LABELS,
   TIMEZONE_SUGGESTION_LABELS,
   formatUsPhoneInput,
+  getServiceDisplayLabel,
   isAllowedTimezoneValue,
   isValidFullUrlValue,
   isValidUsPhoneValue
@@ -245,9 +246,9 @@ export function SetupBusinessProfileForm({
               name="vertical"
               required
               defaultValue={defaultService}
-              suggestions={[...ACTIVE_SERVICE_VALUES]}
+              suggestions={ACTIVE_SERVICE_VALUES.map((service) => getServiceDisplayLabel(service))}
               comingSoon={COMING_SOON_SERVICE_LABELS}
-              placeholder="Type to search services"
+              placeholder="Choose your service"
               ariaDescribedBy="service-help vertical-error"
               ariaInvalid={Boolean(errors.vertical)}
               onBlur={onFieldBlur('vertical')}
@@ -255,7 +256,7 @@ export function SetupBusinessProfileForm({
               className={fieldSurfaceClass}
             />
             <p id="service-help" className="mt-2 text-sm text-muted-foreground">
-              Currently available: plumbing.
+              Available now: Plumbing, HVAC, Electrical, and Roofing.
             </p>
             <p id="vertical-error" aria-live="polite" className="mt-1 text-sm text-destructive">
               {errors.vertical}

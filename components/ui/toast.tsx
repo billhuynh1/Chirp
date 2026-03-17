@@ -35,12 +35,12 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 function toastVariantClass(variant: ToastVariant) {
   if (variant === 'destructive') {
-    return 'border-destructive/40 bg-destructive/10 text-destructive';
+    return 'border-2 border-destructive/55 bg-destructive/16 text-destructive shadow-[0_18px_40px_rgba(220,38,38,0.18)]';
   }
   if (variant === 'success') {
-    return 'border-primary/30 bg-card text-foreground';
+    return 'border-2 border-success/45 bg-success/16 text-foreground shadow-[0_18px_40px_rgba(22,163,74,0.14)]';
   }
-  return 'border-border bg-card text-foreground';
+  return 'border-2 border-primary/20 bg-primary/10 text-foreground shadow-[0_18px_40px_rgba(15,118,110,0.12)]';
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -99,18 +99,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               key={item.id}
               role="status"
               className={cn(
-                'pointer-events-auto rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm',
+                'toast-enter pointer-events-auto rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm',
                 toastVariantClass(item.variant ?? 'default')
               )}
             >
               <div className="flex items-start gap-3">
                 {item.variant === 'success' ? (
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
                 ) : null}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">{item.title}</p>
                   {item.description ? (
-                    <p className="mt-0.5 text-sm text-muted-foreground">{item.description}</p>
+                    <p className="mt-0.5 text-sm text-foreground/80">{item.description}</p>
                   ) : null}
                 </div>
                 <button

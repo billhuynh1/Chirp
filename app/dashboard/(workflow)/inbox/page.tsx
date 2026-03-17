@@ -93,13 +93,10 @@ export default async function InboxPage({
   });
 
   return (
-    <section className="flex flex-col h-[calc(100dvh-5.5rem)] sm:h-[calc(100dvh-6.5rem)] lg:h-[calc(100dvh-7.5rem)] gap-2">
+    <section className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
       <div className="flex items-center justify-between shrink-0 mb-2">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Reviews Inbox</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Active reviews stay front and center. Completed items are available under the Completed filter in list view.
-          </p>
         </div>
         <div className="flex items-center gap-2">
           {focusQueueEnabled ? (
@@ -127,7 +124,7 @@ export default async function InboxPage({
           Focus Queue is disabled for this workspace.
         </div>
       ) : null}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {activeView === 'focus' ? (
           <FocusQueuePanel item={focusQueueItem} skippedReviewIds={skippedReviewIds} />
         ) : (

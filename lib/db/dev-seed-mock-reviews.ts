@@ -48,6 +48,42 @@ const REVIEW_TEMPLATES: ReviewTemplate[] = [
     rating: 5,
     reviewer: 'Jordan S.',
     text: 'Very professional crew, clean work area, and everything explained clearly.'
+  },
+  {
+    rating: 5,
+    reviewer: 'Priya M.',
+    text:
+      'We used this company for a same-week HVAC tune-up and the whole experience felt organized from start to finish. Dispatch texted a realistic arrival window, the technician explained what he was checking in plain language, and he even took photos of the worn capacitor so I could understand why he recommended replacing it. What stood out most was that there was no pressure. He gave us options, answered all of my questions, and left the utility closet cleaner than he found it.'
+  },
+  {
+    rating: 2,
+    reviewer: 'Monica D.',
+    text:
+      'The electrician who came out was polite, but the job itself turned into a frustrating experience. We were told the flickering lights in two bedrooms would likely be a simple fix, then after the visit we got a much larger estimate without a clear walkthrough of what changed. I had to call twice to get clarification, and by the time someone responded we still did not have the written breakdown we asked for. I do not mind paying for good work, but the communication and expectation-setting felt messy the entire time.'
+  },
+  {
+    rating: 4,
+    reviewer: 'Erin W.',
+    text:
+      'Booked them for a garage door repair after the spring snapped. They were not the cheapest quote, but they showed up on time, explained the safety issue clearly, and finished in one visit. The only reason this is not a full five stars is that the appointment window moved by about an hour and I had to reshuffle my afternoon. Aside from that, the tech was excellent and the door is quieter than it has been in years.'
+  },
+  {
+    rating: 1,
+    reviewer: 'Victor H.',
+    text:
+      'I called for an emergency restoration visit after a pipe burst in our laundry room and soaked part of the hallway. The first person I spoke with said someone would contact us quickly, but the follow-up took much longer than expected and by then we had already started cleaning up with towels and fans ourselves. The crew that eventually arrived was courteous, but I am upset that we lost time during a situation that felt urgent. This was exactly the kind of problem where speed mattered most, and that is where the experience fell short.'
+  },
+  {
+    rating: 3,
+    reviewer: 'Samira T.',
+    text:
+      'We hired them for recurring house cleaning after a remodel. The team was friendly and worked hard, and several parts of the house looked great, especially the kitchen and primary bath. At the same time, a few details were missed in the guest rooms and we had to point out dust still sitting on some baseboards and window ledges. I would consider using them again, but I would want a clearer checklist up front so both sides know what is included.'
+  },
+  {
+    rating: 5,
+    reviewer: 'Noah G.',
+    text:
+      'Excellent pest control visit. We had ants in the pantry and wasps starting to build near the back patio, and the technician took the time to inspect both inside and outside rather than rushing through a generic spray. He explained what would happen over the next few days, what signs to watch for, and what to do if activity continued. The follow-up notes sent afterward were surprisingly helpful and made this feel much more professional than other companies we have tried.'
   }
 ];
 

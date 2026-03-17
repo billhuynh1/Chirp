@@ -118,7 +118,7 @@ export const businesses = pgTable(
       .notNull()
       .references(() => teams.id),
     name: varchar('name', { length: 160 }).notNull(),
-    vertical: varchar('vertical', { length: 80 }).notNull().default('plumbing'),
+    vertical: varchar('vertical', { length: 80 }).notNull().default(''),
     primaryPhone: varchar('primary_phone', { length: 40 }),
     website: varchar('website', { length: 255 }),
     timezone: varchar('timezone', { length: 80 }).notNull().default('America/Los_Angeles'),

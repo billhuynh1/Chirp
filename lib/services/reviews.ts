@@ -832,7 +832,9 @@ export async function analyzeStoredReview(
   }
 
   const { review, business, settings } = await getBusinessContextForReview(reviewId);
-  const analysis = await analyzeReviewWithAI(review);
+  const analysis = await analyzeReviewWithAI(review, {
+    vertical: business.vertical
+  });
   const ownerContact = await getBusinessOwnerContact(business.teamId);
 
   const existingVersions = await db

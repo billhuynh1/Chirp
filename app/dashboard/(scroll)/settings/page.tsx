@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { ServiceAutocompleteInput } from '@/components/onboarding/ServiceAutocompleteInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,9 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 import { getCurrentWorkspace } from '@/lib/db/queries';
 import {
+  ACTIVE_SERVICE_VALUES,
+  COMING_SOON_SERVICE_LABELS,
+  getServiceDisplayLabel
+} from '@/lib/validation/business-profile';
+import {
   saveBusinessProfileAction,
   saveBusinessSettingsAction
-} from '../actions';
+} from '../../actions';
 
 export default async function SettingsPage() {
   const workspace = await getCurrentWorkspace();
@@ -47,7 +53,18 @@ export default async function SettingsPage() {
               </div>
               <div>
                 <Label htmlFor="vertical">Service niche</Label>
-                <Input id="vertical" name="vertical" defaultValue={workspace.business.vertical} className="mt-2 rounded-2xl" />
+                <ServiceAutocompleteInput
+                  id="vertical"
+                  name="vertical"
+                  required
+                  defaultValue={getServiceDisplayLabel(workspace.business.vertical)}
+                  suggestions={ACTIVE_SERVICE_VALUES.map((service) =>
+                    getServiceDisplayLabel(service)
+                  )}
+                  comingSoon={COMING_SOON_SERVICE_LABELS}
+                  placeholder="Choose your service"
+                  className="rounded-2xl border border-border/70 bg-muted/70 shadow-none"
+                />
               </div>
               <div>
                 <Label htmlFor="primaryPhone">Primary phone</Label>

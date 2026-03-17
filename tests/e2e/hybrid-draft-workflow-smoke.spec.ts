@@ -329,7 +329,7 @@ test('smoke: draft mode setup/settings and review generate/no-reply states', asy
     };
 
     expect(analysisRawOutput.source).toBe('openai');
-    expect(analysisRawOutput.promptVersion).toBe('analysis-v3-compact-offtopic-gate');
+    expect(analysisRawOutput.promptVersion).toBe('analysis-v4-service-aware');
     expect(analysisRawOutput.usage?.totalTokens).toBe(110);
 
     globalThis.fetch = (async () =>
@@ -367,7 +367,7 @@ test('smoke: draft mode setup/settings and review generate/no-reply states', asy
       usage?: { totalTokens?: number };
     };
     expect(draftMetadata.source).toBe('openai');
-    expect(draftMetadata.promptVersion).toBe('draft-v3-compact-personalized');
+    expect(draftMetadata.promptVersion).toBe('draft-v4-service-aware');
     expect(draftMetadata.usage?.totalTokens).toBe(95);
 
     await db

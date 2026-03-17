@@ -18,6 +18,7 @@ import {
   selectGoogleLocationsAction,
   syncNowAction
 } from '@/app/dashboard/actions';
+import { getServiceDisplayLabel } from '@/lib/validation/business-profile';
 import type {
   SetupOnboardingSnapshot,
   SetupStepActionResult
@@ -337,7 +338,7 @@ export function SetupWizardClient({
         : 'No contact method';
 
     return {
-      service: businessData.vertical,
+      service: getServiceDisplayLabel(businessData.vertical) || 'Not selected',
       timezone: businessData.timezone.replaceAll('_', ' '),
       contactMethod
     };
@@ -372,7 +373,7 @@ export function SetupWizardClient({
           aria-live="assertive"
           className="rounded-[1.25rem] border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          Service is invalid. Use plumbing for now. HVAC, Electrical, and Roofing are coming soon.
+          Service is invalid. Choose Plumbing, HVAC, Electrical, or Roofing.
         </div>
       ) : null}
       {errorParam === 'invalid-timezone' ? (
@@ -431,7 +432,7 @@ export function SetupWizardClient({
             ) : (
               <SetupBusinessProfileForm
                 defaultName={businessData.name}
-                defaultService={businessData.vertical}
+                defaultService={getServiceDisplayLabel(businessData.vertical)}
                 defaultTimezone={businessData.timezone.replaceAll('_', ' ')}
                 defaultPrimaryPhone={businessData.primaryPhone}
                 defaultReviewContactEmail={businessData.reviewContactEmail}

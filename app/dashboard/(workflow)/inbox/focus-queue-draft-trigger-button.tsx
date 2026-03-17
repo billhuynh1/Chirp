@@ -5,6 +5,8 @@ import { Loader2 } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
+import { isCriticalRiskReview } from './critical-risk-draft-confirmation';
+import { CriticalRiskDraftDialog } from './critical-risk-draft-dialog';
 
 type FocusQueueDraftTriggerButtonProps = {
   reviewId: number;
@@ -13,6 +15,7 @@ type FocusQueueDraftTriggerButtonProps = {
   mode: 'generate' | 'regenerate';
   label: string;
   pendingText: string;
+  riskLevel?: string | null;
   className?: string;
   variant?: 'default' | 'outline' | 'secondary' | 'ghost';
 };
@@ -43,6 +46,7 @@ export function FocusQueueDraftTriggerButton({
   mode,
   label,
   pendingText,
+  riskLevel,
   className,
   variant = 'default'
 }: FocusQueueDraftTriggerButtonProps) {
@@ -51,8 +55,9 @@ export function FocusQueueDraftTriggerButton({
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  async function handleClick() {
+  async function runDraftRequest() {
     if (isLoading) {
       return;
     }
@@ -107,8 +112,9 @@ export function FocusQueueDraftTriggerButton({
       let toastDescription: string | undefined;
       if (returnedDraftSource === 'rules') {
         if (returnedDraftReason === 'critical_risk_gate') {
+          toastTitle = 'AI draft blocked by safety gate';
           toastDescription =
-            'Critical risk review: safety gate prevented OpenAI generation and used fallback rules.';
+            'This review was flagged as critical risk, so AI draft generation was blocked. A fallback draft was created for manual review instead.';
         } else if (returnedDraftReason === 'missing_openai_key') {
           toastTitle = 'AI regeneration unavailable';
           toastVariant = 'destructive';
@@ -165,22 +171,57 @@ export function FocusQueueDraftTriggerButton({
     }
   }
 
+  async function handleClick() {
+    if (isLoading) {
+      return;
+    }
+
+    if (mode === 'regenerate' && !draftId) {
+      toast({
+        title: 'Could not regenerate draft',
+        description: 'No active draft is available for this review.',
+        variant: 'destructive',
+        durationMs: 3200
+      });
+      return;
+    }
+
+    if (isCriticalRiskReview(riskLevel)) {
+      setIsConfirmOpen(true);
+      return;
+    }
+
+    await runDraftRequest();
+  }
+
   return (
-    <Button
-      type="button"
-      className={className}
-      variant={variant}
-      disabled={isLoading}
-      onClick={handleClick}
-    >
-      {isLoading ? (
-        <>
-          <Loader2 className="mr-2 size-4 animate-spin" />
-          {pendingText}
-        </>
-      ) : (
-        label
-      )}
-    </Button>
+    <>
+      <Button
+        type="button"
+        className={className}
+        variant={variant}
+        disabled={isLoading}
+        onClick={handleClick}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 size-4 animate-spin" />
+            {pendingText}
+          </>
+        ) : (
+          label
+        )}
+      </Button>
+      <CriticalRiskDraftDialog
+        reviewId={reviewId}
+        mode={mode}
+        open={isConfirmOpen}
+        onOpenChange={setIsConfirmOpen}
+        onConfirm={() => {
+          setIsConfirmOpen(false);
+          void runDraftRequest();
+        }}
+      />
+    </>
   );
 }
