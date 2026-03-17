@@ -1,12 +1,15 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/session';
 import { db } from './drizzle';
 import {
   activityLogs,
+  auditLogs,
   businessSettings,
   businesses,
   connectedAccounts,
+  locations,
+  reviews,
   teamMembers,
   teams,
   users
@@ -123,6 +126,52 @@ export async function getActivityLogs() {
     .where(eq(activityLogs.userId, user.id))
     .orderBy(desc(activityLogs.timestamp))
     .limit(20);
+}
+
+export async function getRecentBusinessAuditLogs(limit = 20) {
+  const workspace = await getCurrentWorkspace();
+  if (!workspace?.business) {
+    throw new Error('Workspace not found');
+  }
+
+  return db
+    .select({
+      id: auditLogs.id,
+      action: auditLogs.action,
+      entityType: auditLogs.entityType,
+      entityId: auditLogs.entityId,
+      metadata: auditLogs.metadata,
+      createdAt: auditLogs.createdAt,
+      ipAddress: auditLogs.ipAddress,
+      userName: users.name
+    })
+    .from(auditLogs)
+    .leftJoin(users, eq(auditLogs.userId, users.id))
+    .where(eq(auditLogs.businessId, workspace.business.id))
+    .orderBy(desc(auditLogs.createdAt))
+    .limit(limit);
+}
+
+export async function getReviewActivityContext(reviewIds: number[]) {
+  if (reviewIds.length === 0) {
+    return [] as Array<{
+      reviewId: number;
+      reviewerName: string | null;
+      workflowStatus: string;
+      locationName: string;
+    }>;
+  }
+
+  return db
+    .select({
+      reviewId: reviews.id,
+      reviewerName: reviews.reviewerName,
+      workflowStatus: reviews.workflowStatus,
+      locationName: locations.name
+    })
+    .from(reviews)
+    .innerJoin(locations, eq(reviews.locationId, locations.id))
+    .where(inArray(reviews.id, reviewIds));
 }
 
 export async function getBusinessByTeamId(teamId: number) {

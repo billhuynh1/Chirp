@@ -121,7 +121,7 @@ export default async function DashboardPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Recent</CardTitle>
           <Button asChild variant="ghost" size="sm" className="rounded-full">
-            <Link href="/dashboard/activity">View all activity</Link>
+            <Link href="/dashboard/activity#review-workflow">View all activity</Link>
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">

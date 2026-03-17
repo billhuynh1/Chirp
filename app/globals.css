@@ -59,7 +59,7 @@
 
   :root {
     color-scheme: light;
-    --background: 210 25% 98%;
+    --background: 210 24% 97%;
     --foreground: 198 30% 14%;
     --card: 0 0% 100%;
     --card-foreground: 198 30% 14%;
@@ -75,13 +75,13 @@
     --warning-foreground: 0 0% 100%;
     --danger: 0 70% 50%;
     --danger-foreground: 0 0% 100%;
-    --muted: 210 24% 95%;
-    --muted-foreground: 198 12% 40%;
-    --accent: 212 32% 94%;
+    --muted: 210 22% 92%;
+    --muted-foreground: 198 14% 34%;
+    --accent: 212 24% 90%;
     --accent-foreground: 198 30% 14%;
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 22% 88%;
+    --border: 214 18% 82%;
     --input: 214 22% 12%;
     --ring: 173 80% 40%;
     --chart-1: 21 68% 54%;
@@ -90,13 +90,13 @@
     --chart-4: 44 83% 59%;
     --chart-5: 7 73% 63%;
     --radius: 0.6rem;
-    --sidebar-background: 210 28% 96%;
+    --sidebar-background: 210 24% 94%;
     --sidebar-foreground: 198 30% 18%;
     --sidebar-primary: 173 80% 40%;
     --sidebar-primary-foreground: 210 25% 98%;
-    --sidebar-accent: 210 24% 92%;
+    --sidebar-accent: 210 22% 88%;
     --sidebar-accent-foreground: 198 30% 18%;
-    --sidebar-border: 214 20% 86%;
+    --sidebar-border: 214 18% 80%;
     --sidebar-ring: 173 80% 40%;
   }
 

@@ -419,5 +419,11 @@ test('smoke: draft mode setup/settings and review generate/no-reply states', asy
   await page.getByRole('button', { name: 'Acknowledge no-reply' }).click();
   await expect(page.getByText('You are all caught up')).toBeVisible();
 
+  await page.goto('/dashboard/activity#review-workflow');
+  await expect(page.getByRole('heading', { name: 'Recent activity' })).toBeVisible();
+  await expect(page.getByText('Review workflow')).toBeVisible();
+  await expect(page.getByText('updated drafting settings')).toBeVisible();
+  await expect(page.getByText('generated a draft')).toBeVisible();
+
   expect(consoleErrors).toEqual([]);
 });
