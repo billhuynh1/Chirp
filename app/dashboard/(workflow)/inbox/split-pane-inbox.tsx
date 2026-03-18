@@ -5,7 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle
+} from '@/components/ui/dialog';
+import { Search, Loader2, CheckCircle2, Sparkles, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { RatingBadge, ReviewStatusBadge, UrgencyBadge } from '@/components/reviews/review-badges';
 import { isCriticalRiskReview } from './critical-risk-draft-confirmation';
@@ -48,6 +54,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isCriticalRiskDialogOpen, setIsCriticalRiskDialogOpen] = useState(false);
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
 
   // Derived filtered & sorted reviews
   const filteredReviews = useMemo(() => {
@@ -130,6 +137,23 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
     }
   }, [selectedId, filteredReviews]);
 
+  useEffect(() => {
+    if (!selectedReview) {
+      setIsMobileDetailOpen(false);
+    }
+  }, [selectedReview]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const handleMediaChange = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        setIsMobileDetailOpen(false);
+      }
+    };
+    mediaQuery.addEventListener('change', handleMediaChange);
+    return () => mediaQuery.removeEventListener('change', handleMediaChange);
+  }, []);
+
   // Actions
   const handlePostReply = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -181,6 +205,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
         });
     } else {
         setSelectedId(null);
+        setIsMobileDetailOpen(false);
         toast({
            title: 'Reply posted',
            description: 'Your reply has been published successfully. You are all caught up!',
@@ -351,12 +376,19 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
     return 'text-foreground';
   }
 
-  function scrollToReplyDraft() {
-    const composer = document.getElementById('reply-draft-composer');
+  function scrollToReplyDraft(composerId: string) {
+    const composer = document.getElementById(composerId);
     if (!composer) return;
     composer.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (composer instanceof HTMLTextAreaElement) {
       composer.focus({ preventScroll: true });
+    }
+  }
+
+  function handleSelectReview(reviewId: string) {
+    setSelectedId(reviewId);
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      setIsMobileDetailOpen(true);
     }
   }
 
@@ -377,6 +409,157 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
     }
 
     return 'No actionable reviews match your current filter.';
+  }
+
+  function DetailPanelContent({
+    review,
+    composerId
+  }: {
+    review: MockReview;
+    composerId: string;
+  }) {
+    return (
+      <div className="p-6 md:p-8 space-y-8 max-w-4xl mx-auto">
+         {/* Review Header */}
+         <div>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <RatingBadge rating={review.rating} />
+                <ReviewStatusBadge status={review.status} />
+                <UrgencyBadge urgency={review.urgency} />
+              </div>
+              {review.status !== 'completed' ? (
+                <Button type="button" size="sm" className="rounded-full" onClick={() => scrollToReplyDraft(composerId)}>
+                  Reply
+                </Button>
+              ) : null}
+            </div>
+            <h1 className="text-2xl font-semibold break-words">
+              {review.reviewerName} at {review.locationName}
+            </h1>
+            <Card className="mt-4 border-0 shadow-none bg-transparent">
+              <CardContent className="p-0 text-base leading-relaxed text-foreground">
+                {review.text}
+              </CardContent>
+            </Card>
+         </div>
+
+         {/* AI Analysis Grid */}
+         <div className="grid gap-4 md:grid-cols-2">
+            <Card className="rounded-[1.25rem] dark:bg-background">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2">
+                  <Sparkles className="size-3.5" />
+                  AI Analysis
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                 <div>
+                     <div className="text-xs text-muted-foreground font-medium mb-1">Summary</div>
+                     <p className="text-sm">{review.analysis.summary}</p>
+                 </div>
+                 <div>
+                     <div className="text-xs text-muted-foreground font-medium mb-1">Recommended Action</div>
+                     <p className="text-sm text-primary font-medium">
+                       {humanizeToken(review.analysis.recommendation, 'No recommendation')}
+                     </p>
+                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[1.25rem] dark:bg-background">
+              <CardContent className="p-6 space-y-5">
+                 <div className="grid grid-cols-2 gap-4">
+                     <div>
+                         <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Sentiment</div>
+                         <p className={`text-sm font-medium ${sentimentClass(review.analysis.sentiment)}`}>
+                           {humanizeToken(review.analysis.sentiment)}
+                         </p>
+                     </div>
+                     <div>
+                         <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Risk Profile</div>
+                         <p className={`text-sm font-medium ${review.analysis.riskLevel.includes('CRITICAL') ? 'text-destructive' : ''}`}>
+                            {humanizeToken(review.analysis.riskLevel)}
+                         </p>
+                     </div>
+                 </div>
+                 <div>
+                     <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-2">Extracted Tags</div>
+                     <div className="flex flex-wrap gap-2">
+                        {review.analysis.tags.map(tag => (
+                            <span key={tag} className="bg-muted text-foreground inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border border-border/50 bg-background/50">
+                               {humanizeToken(tag)}
+                            </span>
+                        ))}
+                     </div>
+                 </div>
+              </CardContent>
+            </Card>
+         </div>
+
+         <hr className="border-border/50" />
+
+         {/* Reply Actions */}
+         <Card className="rounded-[1.25rem] shadow-none border-0 bg-transparent gap-2 py-0">
+             <CardHeader className="px-0 sm:px-6 pb-2">
+               <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  Reply Draft
+               </CardTitle>
+             </CardHeader>
+             <CardContent className="px-0 sm:px-6 space-y-3">
+               {review.status === 'completed' && review.finalPostedText ? (
+                  <div className="bg-success/10 border border-success/20 rounded-[1.5rem] p-5">
+                     <div className="text-sm font-medium text-success mb-2 flex items-center gap-2">
+                        <CheckCircle2 className="size-4" /> Final Reply Posted
+                     </div>
+                     <p className="text-sm text-foreground/90 whitespace-pre-wrap">{review.finalPostedText}</p>
+                  </div>
+               ) : (
+                   <form onSubmit={handlePostReply} className="space-y-3">
+                       <Textarea
+                          id={composerId}
+                          name="postedText"
+                          defaultValue={review.draftText}
+                          className="min-h-[160px] rounded-[1.5rem] border-border/60 bg-card text-sm leading-relaxed dark:bg-background"
+                       />
+                       <div className="flex flex-wrap items-center gap-3">
+                          <Button
+                             type="submit"
+                             className="rounded-full shadow-sm"
+                             disabled={isSubmitting}
+                          >
+                              {isSubmitting ? (
+                                  <><Loader2 className="mr-2 size-4 animate-spin" /> Posting...</>
+                              ) : (
+                                  'Post Reply'
+                              )}
+                          </Button>
+                          <Button
+                             type="button"
+                             variant="outline"
+                             className="rounded-full"
+                             onClick={handleRegenerateDraft}
+                             disabled={isRegenerating}
+                          >
+                              {isRegenerating ? (
+                                <>
+                                  <Loader2 className="mr-2 size-4 animate-spin" />
+                                  Regenerating...
+                                </>
+                              ) : (
+                                'Regenerate Draft'
+                              )}
+                          </Button>
+                          <Button type="button" variant="ghost" className="rounded-full text-muted-foreground hover:text-destructive">
+                              Reject & Escalate
+                          </Button>
+                       </div>
+                   </form>
+               )}
+             </CardContent>
+         </Card>
+      </div>
+    );
   }
 
   return (
@@ -430,7 +613,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
         </div>
 
         {/* List Content */}
-        <div className="flex-1 min-h-0 space-y-3 overflow-y-auto p-2 pb-8 custom-scrollbar">
+        <div className="flex-1 min-h-0 space-y-3 overflow-y-auto p-2 pr-3 pb-8 custom-scrollbar">
           {filteredReviews.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground text-sm bg-muted/30 rounded-[1.5rem]">
               {getEmptyListMessage()}
@@ -441,7 +624,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
               return (
                 <button
                   key={r.id}
-                  onClick={() => setSelectedId(r.id)}
+                  onClick={() => handleSelectReview(r.id)}
                   className={`w-full text-left p-4 rounded-[1.5rem] transition-all duration-200 border ${
                     isSelected 
                       ? 'border-primary ring-1 ring-primary/50 bg-primary/5 shadow-sm' 
@@ -468,7 +651,7 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
       </div>
 
         {/* RIGHT PANEL: DETAIL & ACTIONS */}
-        <div className="relative flex-1 min-h-0 overflow-y-auto rounded-[1.5rem] border-0 bg-muted/50 shadow-none custom-scrollbar">
+        <div className="relative hidden lg:block flex-1 min-h-0 overflow-y-auto rounded-[1.5rem] border-0 bg-muted/50 shadow-none custom-scrollbar">
         {!selectedReview ? (
            <div className="flex flex-col items-center justify-center h-full text-muted-foreground w-full p-10">
                <div className="rounded-full bg-muted p-4 mb-4">
@@ -478,149 +661,33 @@ export function SplitPaneInbox({ initialReviews }: { initialReviews: MockReview[
                <p className="text-sm max-w-[250px] text-center">No reviews selected. Choose a review from the left panel to begin.</p>
            </div>
         ) : (
-          <div className="p-6 md:p-8 space-y-8 max-w-4xl mx-auto">
-             {/* Review Header */}
-             <div>
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <RatingBadge rating={selectedReview.rating} />
-                    <ReviewStatusBadge status={selectedReview.status} />
-                    <UrgencyBadge urgency={selectedReview.urgency} />
-                  </div>
-                  {selectedReview.status !== 'completed' ? (
-                    <Button type="button" size="sm" className="rounded-full" onClick={scrollToReplyDraft}>
-                      Reply
-                    </Button>
-                  ) : null}
-                </div>
-                <h1 className="text-2xl font-semibold break-words">
-                  {selectedReview.reviewerName} at {selectedReview.locationName}
-                </h1>
-                <Card className="mt-4 border-0 shadow-none bg-transparent">
-                  <CardContent className="p-0 text-base leading-relaxed text-foreground">
-                    {selectedReview.text}
-                  </CardContent>
-                </Card>
-             </div>
-
-             {/* AI Analysis Grid */}
-             <div className="grid gap-4 md:grid-cols-2">
-                <Card className="rounded-[1.25rem] dark:bg-background">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2">
-                      <Sparkles className="size-3.5" />
-                      AI Analysis
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                     <div>
-                         <div className="text-xs text-muted-foreground font-medium mb-1">Summary</div>
-                         <p className="text-sm">{selectedReview.analysis.summary}</p>
-                     </div>
-                     <div>
-                         <div className="text-xs text-muted-foreground font-medium mb-1">Recommended Action</div>
-                         <p className="text-sm text-primary font-medium">
-                           {humanizeToken(selectedReview.analysis.recommendation, 'No recommendation')}
-                         </p>
-                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-[1.25rem] dark:bg-background">
-                  <CardContent className="p-6 space-y-5">
-                     <div className="grid grid-cols-2 gap-4">
-                         <div>
-                             <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Sentiment</div>
-                             <p className={`text-sm font-medium ${sentimentClass(selectedReview.analysis.sentiment)}`}>
-                               {humanizeToken(selectedReview.analysis.sentiment)}
-                             </p>
-                         </div>
-                         <div>
-                             <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Risk Profile</div>
-                             <p className={`text-sm font-medium ${selectedReview.analysis.riskLevel.includes('CRITICAL') ? 'text-destructive' : ''}`}>
-                                {humanizeToken(selectedReview.analysis.riskLevel)}
-                             </p>
-                         </div>
-                     </div>
-                     <div>
-                         <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-2">Extracted Tags</div>
-                         <div className="flex flex-wrap gap-2">
-                            {selectedReview.analysis.tags.map(tag => (
-                                <span key={tag} className="bg-muted text-foreground inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border border-border/50 bg-background/50">
-                                   {humanizeToken(tag)}
-                                </span>
-                            ))}
-                         </div>
-                     </div>
-                  </CardContent>
-                </Card>
-             </div>
-
-             <hr className="border-border/50" />
-
-             {/* Reply Actions */}
-             <Card className="rounded-[1.25rem] shadow-none border-0 bg-transparent gap-2 py-0">
-                 <CardHeader className="px-0 sm:px-6 pb-2">
-                   <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      Reply Draft
-                   </CardTitle>
-                 </CardHeader>
-                 <CardContent className="px-0 sm:px-6 space-y-3">
-                   {selectedReview.status === 'completed' && selectedReview.finalPostedText ? (
-                      <div className="bg-success/10 border border-success/20 rounded-[1.5rem] p-5">
-                         <div className="text-sm font-medium text-success mb-2 flex items-center gap-2">
-                            <CheckCircle2 className="size-4" /> Final Reply Posted
-                         </div>
-                         <p className="text-sm text-foreground/90 whitespace-pre-wrap">{selectedReview.finalPostedText}</p>
-                      </div>
-                   ) : (
-                       <form onSubmit={handlePostReply} className="space-y-3">
-                           <Textarea 
-                              id="reply-draft-composer"
-                              name="postedText"
-                              defaultValue={selectedReview.draftText}
-                              className="min-h-[160px] rounded-[1.5rem] border-border/60 bg-card text-sm leading-relaxed dark:bg-background"
-                           />
-                           <div className="flex flex-wrap items-center gap-3">
-                              <Button 
-                                 type="submit" 
-                                 className="rounded-full shadow-sm"
-                                 disabled={isSubmitting}
-                              >
-                                  {isSubmitting ? (
-                                      <><Loader2 className="mr-2 size-4 animate-spin" /> Posting...</>
-                                  ) : (
-                                      'Post Reply'
-                                  )}
-                              </Button>
-                              <Button
-                                 type="button"
-                                 variant="outline"
-                                 className="rounded-full"
-                                 onClick={handleRegenerateDraft}
-                                 disabled={isRegenerating}
-                              >
-                                  {isRegenerating ? (
-                                    <>
-                                      <Loader2 className="mr-2 size-4 animate-spin" />
-                                      Regenerating...
-                                    </>
-                                  ) : (
-                                    'Regenerate Draft'
-                                  )}
-                              </Button>
-                              <Button type="button" variant="ghost" className="rounded-full text-muted-foreground hover:text-destructive">
-                                  Reject & Escalate
-                              </Button>
-                           </div>
-                       </form>
-                   )}
-                 </CardContent>
-             </Card>
-          </div>
+          <DetailPanelContent review={selectedReview} composerId="reply-draft-composer-desktop" />
         )}
         </div>
       </div>
+      <Dialog open={isMobileDetailOpen} onOpenChange={setIsMobileDetailOpen}>
+        <DialogContent className="left-0 top-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0 lg:hidden">
+          <div className="flex shrink-0 items-center gap-2 border-b border-border/70 px-4 py-3">
+            <DialogClose asChild>
+              <Button type="button" variant="ghost" size="sm" className="-ml-2 rounded-full px-2.5">
+                <ArrowLeft className="mr-1 size-4" />
+                Back
+                <span className="sr-only">Back to inbox list</span>
+              </Button>
+            </DialogClose>
+            <DialogTitle className="text-base font-semibold">Review details</DialogTitle>
+          </div>
+          {!selectedReview ? (
+            <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+              Select a review from the inbox to view details.
+            </div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
+              <DetailPanelContent review={selectedReview} composerId="reply-draft-composer-mobile" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <CriticalRiskDraftDialog
         reviewId={selectedReview?.id ?? ''}
         mode="regenerate"
